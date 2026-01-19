@@ -31,8 +31,8 @@ export async function GET() {
     }
 
     // Extract unique values
-    const topics = [...new Set(topicData?.map(t => t.topic).filter(Boolean))]
-    const tags = [...new Set(tagData?.flatMap(t => t.tags || []).filter(Boolean))]
+    const topics = Array.from(new Set(topicData?.map(t => t.topic).filter(Boolean)))
+    const tags = Array.from(new Set(tagData?.flatMap(t => t.tags || []).filter(Boolean)))
 
     return NextResponse.json({
       topics: topics.sort(),
