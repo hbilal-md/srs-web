@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { createServiceClient, Card } from '@/lib/supabase'
 import { FSRS, dbCardToState, Rating } from '@/lib/fsrs'
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/next
  * Get the next card due for review

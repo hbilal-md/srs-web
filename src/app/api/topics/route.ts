@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/topics
  * Get all unique topics for deck filter UI

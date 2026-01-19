@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic'
+
 function generateDeckId(): string {
   return Math.random().toString(16).slice(2, 10)
 }

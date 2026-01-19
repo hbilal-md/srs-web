@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/stats
  * Get review statistics
