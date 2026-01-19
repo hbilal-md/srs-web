@@ -9,11 +9,10 @@ export async function GET() {
   try {
     const supabase = createServiceClient()
 
-    // Get distinct topics
+    // Get distinct topics and subtopics
     const { data: topicData, error: topicError } = await supabase
       .from('cards')
-      .select('topic')
-      .neq('topic', null)
+      .select('topic, subtopic')
 
     if (topicError) {
       console.error('Error fetching topics:', topicError)
@@ -32,10 +31,12 @@ export async function GET() {
 
     // Extract unique values
     const topics = Array.from(new Set(topicData?.map(t => t.topic).filter(Boolean)))
+    const subtopics = Array.from(new Set(topicData?.map(t => t.subtopic).filter(Boolean)))
     const tags = Array.from(new Set(tagData?.flatMap(t => t.tags || []).filter(Boolean)))
 
     return NextResponse.json({
       topics: topics.sort(),
+      subtopics: subtopics.sort(),
       tags: tags.sort(),
       states: ['new', 'learning', 'review', 'relearning'],
     })

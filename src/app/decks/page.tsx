@@ -17,6 +17,7 @@ interface Deck {
 
 interface FilterOptions {
   topics: string[]
+  subtopics: string[]
   tags: string[]
   states: string[]
 }
@@ -25,6 +26,7 @@ export default function DecksPage() {
   const [decks, setDecks] = useState<Deck[]>([])
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     topics: [],
+    subtopics: [],
     tags: [],
     states: [],
   })
@@ -34,6 +36,7 @@ export default function DecksPage() {
   // Form state for new deck
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [selectedSubtopics, setSelectedSubtopics] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedStates, setSelectedStates] = useState<string[]>([])
   const [maxCards, setMaxCards] = useState<number | ''>('')
@@ -77,6 +80,7 @@ export default function DecksPage() {
         body: JSON.stringify({
           name: newDeckName,
           filterTopics: selectedTopics,
+          filterSubtopics: selectedSubtopics,
           filterTags: selectedTags,
           filterStates: selectedStates,
           maxCards: maxCards || null,
@@ -104,6 +108,7 @@ export default function DecksPage() {
   const resetForm = () => {
     setNewDeckName('')
     setSelectedTopics([])
+    setSelectedSubtopics([])
     setSelectedTags([])
     setSelectedStates([])
     setMaxCards('')
@@ -291,6 +296,31 @@ export default function DecksPage() {
                         }`}
                       >
                         {topic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Subtopics */}
+              {filterOptions.subtopics.length > 0 && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Filter by Subtopics
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {filterOptions.subtopics.map(subtopic => (
+                      <button
+                        key={subtopic}
+                        type="button"
+                        onClick={() => toggleSelection(subtopic, selectedSubtopics, setSelectedSubtopics)}
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          selectedSubtopics.includes(subtopic)
+                            ? 'bg-cyan-600'
+                            : 'bg-gray-700 hover:bg-gray-600'
+                        }`}
+                      >
+                        {subtopic}
                       </button>
                     ))}
                   </div>

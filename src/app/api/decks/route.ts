@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     const {
       name,
       filterTopics = [],
+      filterSubtopics = [],
       filterTags = [],
       filterStates = [],
       maxCards,
@@ -73,6 +74,9 @@ export async function POST(request: Request) {
     // Apply filters
     if (filterTopics.length > 0) {
       query = query.in('topic', filterTopics)
+    }
+    if (filterSubtopics.length > 0) {
+      query = query.in('subtopic', filterSubtopics)
     }
     if (filterStates.length > 0) {
       query = query.in('state', filterStates)
