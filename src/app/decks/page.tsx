@@ -9,6 +9,7 @@ interface Deck {
   filter_topics: string[]
   filter_tags: string[]
   filter_states: string[]
+  filter_importance: string[]
   totalCards: number
   progress: number
   progressPercent: number
@@ -20,6 +21,7 @@ interface FilterOptions {
   subtopics: string[]
   tags: string[]
   states: string[]
+  importance: string[]
 }
 
 export default function DecksPage() {
@@ -29,6 +31,7 @@ export default function DecksPage() {
     subtopics: [],
     tags: [],
     states: [],
+    importance: [],
   })
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -39,6 +42,7 @@ export default function DecksPage() {
   const [selectedSubtopics, setSelectedSubtopics] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedStates, setSelectedStates] = useState<string[]>([])
+  const [selectedImportance, setSelectedImportance] = useState<string[]>([])
   const [maxCards, setMaxCards] = useState<number | ''>('')
   const [isCreating, setIsCreating] = useState(false)
 
@@ -83,6 +87,7 @@ export default function DecksPage() {
           filterSubtopics: selectedSubtopics,
           filterTags: selectedTags,
           filterStates: selectedStates,
+          filterImportance: selectedImportance,
           maxCards: maxCards || null,
         }),
       })
@@ -111,6 +116,7 @@ export default function DecksPage() {
     setSelectedSubtopics([])
     setSelectedTags([])
     setSelectedStates([])
+    setSelectedImportance([])
     setMaxCards('')
   }
 
@@ -231,7 +237,7 @@ export default function DecksPage() {
               </div>
 
               {/* Filter tags */}
-              {(deck.filter_topics.length > 0 || deck.filter_tags.length > 0 || deck.filter_states.length > 0) && (
+              {(deck.filter_topics.length > 0 || deck.filter_tags.length > 0 || deck.filter_states.length > 0 || (deck.filter_importance && deck.filter_importance.length > 0)) && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {deck.filter_topics.map(t => (
                     <span key={t} className="text-xs bg-blue-600/30 px-2 py-0.5 rounded">
@@ -246,6 +252,11 @@ export default function DecksPage() {
                   {deck.filter_states.map(s => (
                     <span key={s} className="text-xs bg-gray-600/30 px-2 py-0.5 rounded">
                       {s}
+                    </span>
+                  ))}
+                  {(deck.filter_importance || []).map(imp => (
+                    <span key={imp} className={`text-xs px-2 py-0.5 rounded ${imp === 'core' ? 'bg-yellow-600/30' : 'bg-orange-600/30'}`}>
+                      {imp === 'core' ? '⭐ core' : 'supporting'}
                     </span>
                   ))}
                 </div>
@@ -373,6 +384,32 @@ export default function DecksPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Importance */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Filter by Importance
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(filterOptions.importance || ['core', 'supporting']).map(imp => (
+                    <button
+                      key={imp}
+                      type="button"
+                      onClick={() => toggleSelection(imp, selectedImportance, setSelectedImportance)}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        selectedImportance.includes(imp)
+                          ? imp === 'core' ? 'bg-yellow-600' : 'bg-orange-600'
+                          : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      {imp === 'core' ? '⭐ Core' : 'Supporting'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Core = must-know concepts, Supporting = reinforcement
+                </p>
               </div>
 
               {/* Max cards */}

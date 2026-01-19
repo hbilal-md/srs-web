@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       filterSubtopics = [],
       filterTags = [],
       filterStates = [],
+      filterImportance = [],
       maxCards,
     } = body
 
@@ -87,6 +88,10 @@ export async function POST(request: Request) {
     // Tags filter requires contains check
     if (filterTags.length > 0) {
       query = query.overlaps('tags', filterTags)
+    }
+    // Importance filter (core/supporting)
+    if (filterImportance.length > 0) {
+      query = query.in('importance', filterImportance)
     }
 
     // Order by due date (most overdue first)
@@ -123,6 +128,7 @@ export async function POST(request: Request) {
         filter_topics: filterTopics,
         filter_tags: filterTags,
         filter_states: filterStates,
+        filter_importance: filterImportance,
         max_cards: maxCards || null,
         card_queue: cardQueue,
         current_position: 0,

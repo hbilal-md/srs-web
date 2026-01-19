@@ -42,6 +42,7 @@ export async function GET() {
       subtopics: subtopics.sort(),
       tags: tags.sort(),
       states: ['new', 'learning', 'review', 'relearning'],
+      importance: ['core', 'supporting'],
     })
   } catch (err) {
     console.error('Unexpected error:', err)
