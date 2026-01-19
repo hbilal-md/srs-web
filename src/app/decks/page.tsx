@@ -162,7 +162,7 @@ export default function DecksPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <Link href="/" className="text-gray-400 hover:text-white text-sm">
-            ← Back to Review
+            ← Home
           </Link>
           <h1 className="text-2xl font-bold mt-2">Filtered Decks</h1>
         </div>
