@@ -324,12 +324,12 @@ export default function ReviewPage() {
         {!isRevealed ? (
           <span>
             <span className="kbd">Space</span> to reveal
-            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
           </span>
         ) : (
           <span>
             <span className="kbd">1-4</span> to rate
-            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
           </span>
         )}
       </div>
