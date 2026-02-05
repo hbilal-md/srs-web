@@ -45,8 +45,8 @@ export async function POST(request: Request) {
     const cardState = dbCardToState(card)
     const { newState, intervalDays } = fsrs.review(cardState, rating as Rating)
 
-    // Save review history
-    const { error: reviewError } = await supabase
+    // Save review history (with full prev state for undo support)
+    const { data: review, error: reviewError } = await supabase
       .from('reviews')
       .insert({
         card_id: cardId,
@@ -55,7 +55,13 @@ export async function POST(request: Request) {
         prev_stability: card.stability,
         prev_difficulty: card.difficulty,
         prev_state: card.state,
+        prev_review_count: card.review_count,
+        prev_lapses: card.lapses,
+        prev_due_date: card.due_date,
+        prev_last_review: card.last_review,
       })
+      .select('id')
+      .single()
 
     if (reviewError) {
       console.error('Error saving review:', reviewError)
@@ -81,6 +87,7 @@ export async function POST(request: Request) {
       success: true,
       intervalDays,
       newState: dbState,
+      reviewId: review?.id || null,
     })
   } catch (err) {
     console.error('Unexpected error:', err)

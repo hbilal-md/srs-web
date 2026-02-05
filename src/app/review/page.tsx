@@ -32,12 +32,14 @@ export default function ReviewPage() {
   const [remaining, setRemaining] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
   const [reviewStartTime, setReviewStartTime] = useState<number | null>(null)
+  const [lastReviewId, setLastReviewId] = useState<string | null>(null)
 
   // Fetch next card
   const fetchNextCard = useCallback(async () => {
     setIsLoading(true)
     setIsRevealed(false)
     setReviewStartTime(null)
+    setLastReviewId(null)
 
     try {
       const res = await fetch('/api/next')
@@ -90,7 +92,7 @@ export default function ReviewPage() {
       : null
 
     try {
-      await fetch('/api/review', {
+      const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -99,9 +101,13 @@ export default function ReviewPage() {
           timeTakenMs,
         }),
       })
+      const data = await res.json()
+      const reviewId = data.reviewId
 
       // Fetch next card
       await fetchNextCard()
+      // Store review ID for undo (after fetchNextCard clears it, set it again)
+      setLastReviewId(reviewId)
       // Update stats
       fetchStats()
     } catch (err) {
@@ -130,6 +136,37 @@ export default function ReviewPage() {
     }
   }
 
+  // Handle undo
+  const handleUndo = async () => {
+    if (!lastReviewId || isSubmitting) return
+
+    setIsSubmitting(true)
+
+    try {
+      const res = await fetch('/api/review/undo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId: lastReviewId }),
+      })
+      const data = await res.json()
+
+      if (data.success && data.card) {
+        setCard(data.card)
+        setIntervals(data.intervals || null)
+        setIsRevealed(false)
+        setLastReviewId(null)
+        setReviewStartTime(Date.now())
+        setRemaining((prev) => prev + 1)
+      }
+
+      fetchStats()
+    } catch (err) {
+      console.error('Error undoing review:', err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Handle flag
   const handleFlag = async () => {
     if (!card || isSubmitting) return
@@ -150,6 +187,13 @@ export default function ReviewPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      // Undo shortcut (Z) - works anytime there's a review to undo
+      if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && lastReviewId) {
+        e.preventDefault()
+        handleUndo()
         return
       }
 
@@ -178,7 +222,7 @@ export default function ReviewPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isRevealed, intervals, isSubmitting])
+  }, [isRevealed, intervals, isSubmitting, lastReviewId])
 
   // Loading state
   if (isLoading) {
@@ -269,6 +313,7 @@ export default function ReviewPage() {
           <ActionButtons
             onAbandon={handleAbandon}
             onFlag={handleFlag}
+            onUndo={lastReviewId ? handleUndo : undefined}
             disabled={isSubmitting}
           />
         </div>
@@ -277,9 +322,15 @@ export default function ReviewPage() {
       {/* Keyboard hints */}
       <div className="mt-4 text-center text-xs text-gray-500">
         {!isRevealed ? (
-          <span><span className="kbd">Space</span> to reveal</span>
+          <span>
+            <span className="kbd">Space</span> to reveal
+            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+          </span>
         ) : (
-          <span><span className="kbd">1-4</span> to rate</span>
+          <span>
+            <span className="kbd">1-4</span> to rate
+            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+          </span>
         )}
       </div>
     </div>

@@ -94,11 +94,15 @@ export async function POST(
     const { id: deckId } = params
     const supabase = createServiceClient()
 
-    // Parse optional rating from body
+    // Parse optional body
     let rating: number | null = null
+    let undo = false
+    let lastRating: number | null = null
     try {
       const body = await request.json()
       rating = body.rating ?? null
+      undo = body.undo ?? false
+      lastRating = body.lastRating ?? null
     } catch {
       // No body or invalid JSON — that's fine, just advance
     }
@@ -115,6 +119,36 @@ export async function POST(
     }
 
     let cardQueue = [...deck.card_queue]
+
+    // Handle undo: go back one position
+    if (undo) {
+      const newPosition = Math.max(0, deck.current_position - 1)
+
+      // If the last rating was AGAIN, the card was re-appended — remove it
+      if (lastRating === 1 && cardQueue.length > 0) {
+        cardQueue.pop()
+      }
+
+      const updateData: Record<string, unknown> = {
+        current_position: newPosition,
+        completed: false,
+      }
+      if (lastRating === 1) {
+        updateData.card_queue = cardQueue
+      }
+
+      const { error: updateError } = await supabase
+        .from('filtered_decks')
+        .update(updateData)
+        .eq('deck_id', deckId)
+
+      if (updateError) {
+        console.error('Error undoing deck position:', updateError)
+        return NextResponse.json({ error: updateError.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, newPosition, completed: false })
+    }
 
     // If rated AGAIN, re-append the current card to the end of the queue
     if (rating === 1) {
