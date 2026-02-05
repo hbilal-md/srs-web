@@ -208,7 +208,7 @@ export default function DeckReviewPage() {
                 await fetch(`/api/decks/${deckId}/reset`, { method: 'POST' })
                 fetchNextCard()
               }}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg"
+              className="px-6 py-3 bg-accent-green hover:opacity-90 rounded-lg text-gray-900 font-medium"
             >
               Review Again
             </button>
@@ -223,7 +223,7 @@ export default function DeckReviewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 mb-4">Deck not found or empty.</p>
-          <Link href="/decks" className="text-blue-400 hover:text-blue-300">
+          <Link href="/decks" className="text-accent-green hover:opacity-80">
             Back to Decks
           </Link>
         </div>
@@ -232,9 +232,9 @@ export default function DeckReviewPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col p-4 max-w-2xl mx-auto">
+    <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <Link href="/decks" className="text-gray-400 hover:text-white text-sm">
           ← Decks
         </Link>
@@ -247,7 +247,7 @@ export default function DeckReviewPage() {
 
       {/* Progress */}
       {deck && (
-        <div className="mb-4">
+        <div className="mb-3">
           <div className="flex justify-between text-sm text-gray-400 mb-1">
             <span>{deck.progress + 1} / {deck.totalCards}</span>
             <span>{deck.progressPercent}%</span>
@@ -272,7 +272,7 @@ export default function DeckReviewPage() {
 
       {/* Rating buttons */}
       {isRevealed && intervals && (
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 space-y-3">
           <RatingButtons
             intervals={intervals}
             onRate={handleRate}

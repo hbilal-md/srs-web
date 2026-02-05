@@ -25,7 +25,7 @@ const RATING_CONFIG = [
     rating: Rating.GOOD,
     label: 'Good',
     key: '3',
-    color: 'bg-green-600 hover:bg-green-500',
+    color: 'bg-accent-green hover:opacity-90',
   },
   {
     rating: Rating.EASY,
@@ -37,7 +37,7 @@ const RATING_CONFIG = [
 
 export default function RatingButtons({ intervals, onRate, disabled }: RatingButtonsProps) {
   return (
-    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+    <div className="grid grid-cols-4 gap-3">
       {RATING_CONFIG.map(({ rating, label, key, color }) => (
         <button
           key={rating}
@@ -45,17 +45,17 @@ export default function RatingButtons({ intervals, onRate, disabled }: RatingBut
           disabled={disabled}
           className={`
             rating-btn ${color}
-            px-2 py-3 sm:px-4 sm:py-4
+            px-4 py-5
             rounded-lg font-medium
-            flex flex-col items-center gap-1
+            flex flex-col items-center gap-1.5
             text-white
           `}
         >
-          <span className="text-sm sm:text-base">{label}</span>
-          <span className="text-xs opacity-75">
+          <span className="text-base font-semibold">{label}</span>
+          <span className="text-sm opacity-90">
             {formatInterval(intervals[rating])}
           </span>
-          <span className="kbd text-xs hidden sm:inline">{key}</span>
+          <span className="kbd text-xs">{key}</span>
         </button>
       ))}
     </div>

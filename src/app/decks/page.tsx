@@ -168,7 +168,7 @@ export default function DecksPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 max-w-2xl mx-auto">
+    <div className="min-h-screen p-4 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -179,7 +179,7 @@ export default function DecksPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg"
+          className="px-4 py-2 bg-accent-green hover:opacity-90 rounded-lg text-gray-900 font-medium"
         >
           + New Deck
         </button>
@@ -196,7 +196,7 @@ export default function DecksPage() {
           {decks.map(deck => (
             <div
               key={deck.deck_id}
-              className="bg-[#16213e] rounded-lg p-4"
+              className="bg-dark-card rounded-lg p-4"
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
@@ -209,7 +209,7 @@ export default function DecksPage() {
                 <div className="flex gap-2">
                   <Link
                     href={`/decks/${deck.deck_id}`}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm"
+                    className="px-3 py-1 bg-accent-green hover:opacity-90 rounded text-sm text-gray-900 font-medium"
                   >
                     {deck.completed ? 'Review' : 'Continue'}
                   </Link>
@@ -240,12 +240,12 @@ export default function DecksPage() {
               {(deck.filter_topics.length > 0 || deck.filter_tags.length > 0 || deck.filter_states.length > 0 || (deck.filter_importance && deck.filter_importance.length > 0)) && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {deck.filter_topics.map(t => (
-                    <span key={t} className="text-xs bg-blue-600/30 px-2 py-0.5 rounded">
+                    <span key={t} className="text-xs bg-accent-green/30 px-2 py-0.5 rounded">
                       {t}
                     </span>
                   ))}
                   {deck.filter_tags.map(t => (
-                    <span key={t} className="text-xs bg-purple-600/30 px-2 py-0.5 rounded">
+                    <span key={t} className="text-xs bg-dark-accent px-2 py-0.5 rounded">
                       #{t}
                     </span>
                   ))}
@@ -255,7 +255,7 @@ export default function DecksPage() {
                     </span>
                   ))}
                   {(deck.filter_importance || []).map(imp => (
-                    <span key={imp} className={`text-xs px-2 py-0.5 rounded ${imp === 'core' ? 'bg-yellow-600/30' : 'bg-orange-600/30'}`}>
+                    <span key={imp} className={`text-xs px-2 py-0.5 rounded ${imp === 'core' ? 'bg-accent-green/30' : 'bg-gray-500/30'}`}>
                       {imp === 'core' ? '⭐ core' : 'supporting'}
                     </span>
                   ))}
@@ -269,7 +269,7 @@ export default function DecksPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#16213e] rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-dark-card rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Create Filtered Deck</h2>
 
             <form onSubmit={handleCreateDeck} className="space-y-4">
@@ -283,7 +283,7 @@ export default function DecksPage() {
                   value={newDeckName}
                   onChange={e => setNewDeckName(e.target.value)}
                   placeholder="e.g., Cytology Review"
-                  className="w-full px-3 py-2 bg-[#1a1a2e] rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-dark-bg rounded-lg border border-gray-600 focus:border-accent-green focus:outline-none"
                   required
                 />
               </div>
@@ -302,7 +302,7 @@ export default function DecksPage() {
                         onClick={() => toggleSelection(topic, selectedTopics, setSelectedTopics)}
                         className={`px-3 py-1 rounded-full text-sm ${
                           selectedTopics.includes(topic)
-                            ? 'bg-blue-600'
+                            ? 'bg-accent-green text-gray-900'
                             : 'bg-gray-700 hover:bg-gray-600'
                         }`}
                       >
@@ -327,7 +327,7 @@ export default function DecksPage() {
                         onClick={() => toggleSelection(subtopic, selectedSubtopics, setSelectedSubtopics)}
                         className={`px-3 py-1 rounded-full text-sm ${
                           selectedSubtopics.includes(subtopic)
-                            ? 'bg-cyan-600'
+                            ? 'bg-accent-green text-gray-900'
                             : 'bg-gray-700 hover:bg-gray-600'
                         }`}
                       >
@@ -352,7 +352,7 @@ export default function DecksPage() {
                         onClick={() => toggleSelection(tag, selectedTags, setSelectedTags)}
                         className={`px-3 py-1 rounded-full text-sm ${
                           selectedTags.includes(tag)
-                            ? 'bg-purple-600'
+                            ? 'bg-accent-green text-gray-900'
                             : 'bg-gray-700 hover:bg-gray-600'
                         }`}
                       >
@@ -376,7 +376,7 @@ export default function DecksPage() {
                       onClick={() => toggleSelection(state, selectedStates, setSelectedStates)}
                       className={`px-3 py-1 rounded-full text-sm ${
                         selectedStates.includes(state)
-                          ? 'bg-green-600'
+                          ? 'bg-accent-green text-gray-900'
                           : 'bg-gray-700 hover:bg-gray-600'
                       }`}
                     >
@@ -399,7 +399,7 @@ export default function DecksPage() {
                       onClick={() => toggleSelection(imp, selectedImportance, setSelectedImportance)}
                       className={`px-3 py-1 rounded-full text-sm ${
                         selectedImportance.includes(imp)
-                          ? imp === 'core' ? 'bg-yellow-600' : 'bg-orange-600'
+                          ? 'bg-accent-green text-gray-900'
                           : 'bg-gray-700 hover:bg-gray-600'
                       }`}
                     >
@@ -423,7 +423,7 @@ export default function DecksPage() {
                   onChange={e => setMaxCards(e.target.value ? parseInt(e.target.value) : '')}
                   placeholder="Leave empty for all matching cards"
                   min={1}
-                  className="w-full px-3 py-2 bg-[#1a1a2e] rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-dark-bg rounded-lg border border-gray-600 focus:border-accent-green focus:outline-none"
                 />
               </div>
 
@@ -442,7 +442,7 @@ export default function DecksPage() {
                 <button
                   type="submit"
                   disabled={isCreating || !newDeckName.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-accent-green hover:opacity-90 rounded-lg disabled:opacity-50 text-gray-900 font-medium"
                 >
                   {isCreating ? 'Creating...' : 'Create Deck'}
                 </button>

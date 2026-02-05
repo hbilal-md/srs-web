@@ -46,7 +46,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
       return (
         <div className="flex flex-col items-center gap-4">
           {/* Question */}
-          <p className="text-lg text-center text-gray-300">
+          <p className="text-2xl text-center text-gray-300 font-medium">
             {cleanCardText(card.question || 'What is hidden?')}
           </p>
 
@@ -69,7 +69,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
           {/* Answer (when revealed) */}
           {isRevealed && (
-            <p className="text-xl font-bold text-green-400 text-center mt-4">
+            <p className="text-3xl font-bold text-accent-green text-center mt-6">
               {card.answer}
             </p>
           )}
@@ -81,19 +81,19 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
       const { question, answer } = parseCloze(card.cloze_text || card.question || '')
       return (
         <div className="flex flex-col items-center gap-4">
-          <p className="text-xl text-center leading-relaxed">
+          <p className="text-2xl text-center leading-relaxed">
             {isRevealed ? (
               // Show full text with answer highlighted
               (card.cloze_text || card.question || '').replace(
                 /\[([^\]]+)\]/,
-                '<span class="text-green-400 font-bold">$1</span>'
+                '<span class="text-accent-green font-bold">$1</span>'
               ).split('<span').map((part, i) => {
                 if (i === 0) return part
                 const [inner, rest] = part.split('</span>')
                 return (
                   <span key={i}>
-                    <span className="text-green-400 font-bold">
-                      {inner.replace('class="text-green-400 font-bold">', '')}
+                    <span className="text-accent-green font-bold">
+                      {inner.replace('class="text-accent-green font-bold">', '')}
                     </span>
                     {rest}
                   </span>
@@ -109,16 +109,16 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
     // Q/A card
     return (
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-8">
         {/* Question */}
-        <p className="text-xl text-center leading-relaxed">
+        <p className="text-2xl text-center leading-relaxed font-medium">
           {cleanCardText(card.question || '')}
         </p>
 
         {/* Answer (when revealed) */}
         {isRevealed && (
-          <div className="border-t border-gray-600 pt-6 w-full">
-            <p className="text-xl font-bold text-green-400 text-center">
+          <div className="border-t-2 border-gray-600 pt-8 w-full">
+            <p className="text-3xl font-bold text-accent-green text-center">
               {card.answer}
             </p>
           </div>
@@ -129,12 +129,12 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
   return (
     <div
-      className="bg-[#16213e] rounded-xl p-6 min-h-[300px] flex flex-col cursor-pointer"
+      className="bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer"
       onClick={!isRevealed ? onReveal : undefined}
     >
       {/* Breadcrumbs */}
       {(card.topic || card.subtopic) && (
-        <div className="text-sm text-gray-500 mb-4">
+        <div className="text-sm text-gray-500 mb-2">
           {card.topic}
           {card.topic && card.subtopic && ' → '}
           {card.subtopic}
@@ -148,7 +148,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
       {/* Tap to reveal hint */}
       {!isRevealed && (
-        <div className="text-center text-gray-500 text-sm mt-4">
+        <div className="text-center text-gray-500 text-sm mt-2">
           Tap to reveal • <span className="kbd">Space</span>
         </div>
       )}

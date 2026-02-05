@@ -199,11 +199,11 @@ export default function ReviewPage() {
 
           {stats && (
             <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto text-sm">
-              <div className="bg-[#16213e] p-4 rounded-lg">
+              <div className="bg-dark-card p-4 rounded-lg">
                 <div className="text-2xl font-bold">{stats.reviewedToday}</div>
                 <div className="text-gray-400">Reviewed today</div>
               </div>
-              <div className="bg-[#16213e] p-4 rounded-lg">
+              <div className="bg-dark-card p-4 rounded-lg">
                 <div className="text-2xl font-bold">{stats.dueToday}</div>
                 <div className="text-gray-400">Due later today</div>
               </div>
@@ -212,7 +212,7 @@ export default function ReviewPage() {
 
           <button
             onClick={fetchNextCard}
-            className="mt-8 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg"
+            className="mt-8 px-6 py-3 bg-accent-green hover:opacity-90 rounded-lg text-gray-900"
           >
             Refresh
           </button>
@@ -222,9 +222,9 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col p-4 max-w-2xl mx-auto">
+    <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto">
       {/* Header with stats */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <Link href="/" className="text-gray-400 hover:text-white text-sm">
           ← Home
         </Link>
@@ -240,7 +240,7 @@ export default function ReviewPage() {
       </div>
 
       {/* Progress bar */}
-      <div className="progress-bar mb-4">
+      <div className="progress-bar mb-3">
         <div
           className="progress-fill"
           style={{
@@ -260,7 +260,7 @@ export default function ReviewPage() {
 
       {/* Rating buttons (only when revealed) */}
       {isRevealed && intervals && (
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 space-y-3">
           <RatingButtons
             intervals={intervals}
             onRate={handleRate}
