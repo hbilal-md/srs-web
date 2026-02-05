@@ -93,9 +93,11 @@ export default function DeckReviewPage() {
         }),
       })
 
-      // Advance deck position
+      // Advance deck position (pass rating so AGAIN cards get re-queued)
       await fetch(`/api/decks/${deckId}/next`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
       })
 
       // Fetch next card

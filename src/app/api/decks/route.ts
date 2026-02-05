@@ -57,6 +57,10 @@ export async function POST(request: Request) {
       filterTags = [],
       filterStates = [],
       filterImportance = [],
+      filterQuality = [],
+      filterDifficultyMin,
+      filterDifficultyMax,
+      sortOrder = 'due_date',
       maxCards,
     } = body
 
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
     // Build query to get matching cards
     let query = supabase
       .from('cards')
-      .select('card_id')
+      .select('card_id, difficulty')
       .neq('state', 'suspended')
 
     // Apply filters
@@ -85,17 +89,39 @@ export async function POST(request: Request) {
     if (filterStates.length > 0) {
       query = query.in('state', filterStates)
     }
-    // Tags filter requires contains check
     if (filterTags.length > 0) {
       query = query.overlaps('tags', filterTags)
     }
-    // Importance filter (core/supporting)
     if (filterImportance.length > 0) {
       query = query.in('importance', filterImportance)
     }
+    if (filterQuality.length > 0) {
+      query = query.in('quality', filterQuality)
+    }
+    // Difficulty range (only applies to reviewed cards with difficulty > 0)
+    if (filterDifficultyMin != null) {
+      query = query.gte('difficulty', filterDifficultyMin)
+    }
+    if (filterDifficultyMax != null) {
+      query = query.lte('difficulty', filterDifficultyMax)
+    }
 
-    // Order by due date (most overdue first)
-    query = query.order('due_date', { ascending: true })
+    // Apply sort order
+    switch (sortOrder) {
+      case 'difficulty':
+        query = query.order('difficulty', { ascending: false })
+        break
+      case 'lapses':
+        query = query.order('lapses', { ascending: false })
+        break
+      case 'random':
+        // Fetch all, shuffle client-side
+        break
+      case 'due_date':
+      default:
+        query = query.order('due_date', { ascending: true })
+        break
+    }
 
     // Apply limit
     if (maxCards && maxCards > 0) {
@@ -109,7 +135,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: cardsError.message }, { status: 500 })
     }
 
-    const cardQueue = cards?.map(c => c.card_id) || []
+    let cardQueue = cards?.map(c => c.card_id) || []
+
+    // Shuffle for random sort order
+    if (sortOrder === 'random') {
+      for (let i = cardQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[cardQueue[i], cardQueue[j]] = [cardQueue[j], cardQueue[i]]
+      }
+      // Apply max cards after shuffle
+      if (maxCards && maxCards > 0) {
+        cardQueue = cardQueue.slice(0, maxCards)
+      }
+    }
 
     if (cardQueue.length === 0) {
       return NextResponse.json(
@@ -126,9 +164,14 @@ export async function POST(request: Request) {
         deck_id: deckId,
         name,
         filter_topics: filterTopics,
+        filter_subtopics: filterSubtopics,
         filter_tags: filterTags,
         filter_states: filterStates,
         filter_importance: filterImportance,
+        filter_quality: filterQuality,
+        filter_difficulty_min: filterDifficultyMin ?? null,
+        filter_difficulty_max: filterDifficultyMax ?? null,
+        sort_order: sortOrder,
         max_cards: maxCards || null,
         card_queue: cardQueue,
         current_position: 0,

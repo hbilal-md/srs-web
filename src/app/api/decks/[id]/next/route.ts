@@ -83,6 +83,8 @@ export async function GET(
 /**
  * POST /api/decks/[id]/next
  * Advance to the next card in the deck (called after review)
+ * If rating is AGAIN (1), re-append the card to the end of the queue
+ * so the user sees it again before the deck completes.
  */
 export async function POST(
   request: Request,
@@ -91,6 +93,15 @@ export async function POST(
   try {
     const { id: deckId } = params
     const supabase = createServiceClient()
+
+    // Parse optional rating from body
+    let rating: number | null = null
+    try {
+      const body = await request.json()
+      rating = body.rating ?? null
+    } catch {
+      // No body or invalid JSON — that's fine, just advance
+    }
 
     // Get current deck state
     const { data: deck, error: deckError } = await supabase
@@ -103,16 +114,31 @@ export async function POST(
       return NextResponse.json({ error: 'Deck not found' }, { status: 404 })
     }
 
-    const newPosition = deck.current_position + 1
-    const completed = newPosition >= deck.card_queue.length
+    let cardQueue = [...deck.card_queue]
 
-    // Update deck position
+    // If rated AGAIN, re-append the current card to the end of the queue
+    if (rating === 1) {
+      const currentCardId = cardQueue[deck.current_position]
+      if (currentCardId) {
+        cardQueue.push(currentCardId)
+      }
+    }
+
+    const newPosition = deck.current_position + 1
+    const completed = newPosition >= cardQueue.length
+
+    // Update deck position (and queue if it grew)
+    const updateData: Record<string, unknown> = {
+      current_position: newPosition,
+      completed,
+    }
+    if (rating === 1) {
+      updateData.card_queue = cardQueue
+    }
+
     const { error: updateError } = await supabase
       .from('filtered_decks')
-      .update({
-        current_position: newPosition,
-        completed,
-      })
+      .update(updateData)
       .eq('deck_id', deckId)
 
     if (updateError) {
