@@ -78,6 +78,18 @@ body {
   border-radius: 8px;
 }
 
+/* Occlusion image - breaks out of container to ~90% screen width */
+.card-image-occlusion {
+  width: 90vw;
+  max-width: 90vw;
+  max-height: 80vh;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  object-fit: contain;
+  border-radius: 8px;
+}
+
 /* Progress bar */
 .progress-bar {
   height: 4px;

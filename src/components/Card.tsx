@@ -44,7 +44,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
   const renderContent = () => {
     if (card.card_type === 'occlusion') {
       return (
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 w-full">
           {/* Question */}
           <p className="text-2xl text-center text-gray-300 font-medium">
             {cleanCardText(card.question || 'What is hidden?')}
@@ -55,7 +55,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
             <img
               src={card.blocked_image}
               alt="Blocked"
-              className="card-image"
+              className="card-image-occlusion"
               onLoad={() => setImageLoaded(true)}
             />
           )}
@@ -63,15 +63,8 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
             <img
               src={card.reveal_image}
               alt="Revealed"
-              className="card-image"
+              className="card-image-occlusion"
             />
-          )}
-
-          {/* Answer (when revealed) */}
-          {isRevealed && (
-            <p className="text-3xl font-bold text-accent-green text-center mt-6">
-              {card.answer}
-            </p>
           )}
         </div>
       )
@@ -118,7 +111,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
         {/* Answer (when revealed) */}
         {isRevealed && (
           <div className="border-t-2 border-gray-600 pt-8 w-full">
-            <p className="text-3xl font-bold text-accent-green text-center">
+            <p className="text-2xl font-medium text-accent-green text-center">
               {card.answer}
             </p>
           </div>
@@ -129,7 +122,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
   return (
     <div
-      className="bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer"
+      className={`bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer ${card.card_type === 'occlusion' ? 'overflow-visible' : ''}`}
       onClick={!isRevealed ? onReveal : undefined}
     >
       {/* Breadcrumbs */}
@@ -142,7 +135,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
       )}
 
       {/* Card content */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className={`flex-1 flex items-center justify-center ${card.card_type === 'occlusion' ? 'overflow-visible' : ''}`}>
         {renderContent()}
       </div>
 
