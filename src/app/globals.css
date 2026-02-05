@@ -89,7 +89,7 @@ body {
   max-height: 80vh;
   object-fit: contain;
   border-radius: 8px;
-  margin-left: calc(50% - 45vw);
+  flex-shrink: 0;
 }
 
 /* Progress bar */
