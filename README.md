@@ -31,7 +31,7 @@ Copy `.env.local.example` to `.env.local` and update values if needed.
 
 ### 3. Set up Supabase
 
-Run the SQL in `supabase-schema.sql` in your Supabase SQL Editor.
+Run the SQL files in `migrations/` in order in your Supabase SQL Editor.
 
 ### 4. Run development server
 

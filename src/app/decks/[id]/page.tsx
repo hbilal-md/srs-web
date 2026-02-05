@@ -36,12 +36,16 @@ export default function DeckReviewPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [reviewStartTime, setReviewStartTime] = useState<number | null>(null)
+  const [lastReviewId, setLastReviewId] = useState<string | null>(null)
+  const [lastRating, setLastRating] = useState<number | null>(null)
 
   // Fetch next card from deck
   const fetchNextCard = useCallback(async () => {
     setIsLoading(true)
     setIsRevealed(false)
     setReviewStartTime(null)
+    setLastReviewId(null)
+    setLastRating(null)
 
     try {
       const res = await fetch(`/api/decks/${deckId}/next`)
@@ -83,7 +87,7 @@ export default function DeckReviewPage() {
 
     try {
       // Submit the review
-      await fetch('/api/review', {
+      const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,6 +96,8 @@ export default function DeckReviewPage() {
           timeTakenMs,
         }),
       })
+      const data = await res.json()
+      const reviewId = data.reviewId
 
       // Advance deck position (pass rating so AGAIN cards get re-queued)
       await fetch(`/api/decks/${deckId}/next`, {
@@ -102,6 +108,9 @@ export default function DeckReviewPage() {
 
       // Fetch next card
       await fetchNextCard()
+      // Store review info for undo (after fetchNextCard clears it, set again)
+      setLastReviewId(reviewId)
+      setLastRating(rating)
     } catch (err) {
       console.error('Error submitting review:', err)
     } finally {
@@ -131,6 +140,52 @@ export default function DeckReviewPage() {
     }
   }
 
+  // Handle undo
+  const handleUndo = async () => {
+    if (!lastReviewId || isSubmitting) return
+
+    setIsSubmitting(true)
+
+    try {
+      // Undo the review (restore card state)
+      const res = await fetch('/api/review/undo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId: lastReviewId }),
+      })
+      const data = await res.json()
+
+      // Roll back deck position
+      await fetch(`/api/decks/${deckId}/next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ undo: true, lastRating }),
+      })
+
+      if (data.success && data.card) {
+        setCard(data.card)
+        setIntervals(data.intervals || null)
+        setIsRevealed(false)
+        setLastReviewId(null)
+        setLastRating(null)
+        setReviewStartTime(Date.now())
+        // Update deck progress
+        if (deck) {
+          setDeck({
+            ...deck,
+            progress: Math.max(0, deck.progress - 1),
+            progressPercent: Math.max(0, Math.round(((deck.progress - 1) / deck.totalCards) * 100)),
+            completed: false,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error undoing review:', err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Handle flag
   const handleFlag = async () => {
     if (!card) return
@@ -149,6 +204,13 @@ export default function DeckReviewPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      // Undo shortcut (Z) - works anytime there's a review to undo
+      if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && lastReviewId) {
+        e.preventDefault()
+        handleUndo()
         return
       }
 
@@ -177,7 +239,7 @@ export default function DeckReviewPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isRevealed, intervals, isSubmitting])
+  }, [isRevealed, intervals, isSubmitting, lastReviewId])
 
   if (isLoading) {
     return (
@@ -283,6 +345,7 @@ export default function DeckReviewPage() {
           <ActionButtons
             onAbandon={handleAbandon}
             onFlag={handleFlag}
+            onUndo={lastReviewId ? handleUndo : undefined}
             disabled={isSubmitting}
           />
         </div>
@@ -291,9 +354,15 @@ export default function DeckReviewPage() {
       {/* Keyboard hints */}
       <div className="mt-4 text-center text-xs text-gray-500">
         {!isRevealed ? (
-          <span><span className="kbd">Space</span> to reveal</span>
+          <span>
+            <span className="kbd">Space</span> to reveal
+            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+          </span>
         ) : (
-          <span><span className="kbd">1-4</span> to rate</span>
+          <span>
+            <span className="kbd">1-4</span> to rate
+            {lastReviewId && <> • <span className="kbd">Z</span> to undo</>}
+          </span>
         )}
       </div>
     </div>
