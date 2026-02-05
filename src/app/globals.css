@@ -11,6 +11,10 @@
   --text-muted: #888;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -80,14 +84,12 @@ body {
 
 /* Occlusion image - breaks out of container to ~90% screen width */
 .card-image-occlusion {
+  display: block;
   width: 90vw;
-  max-width: 90vw;
   max-height: 80vh;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
   object-fit: contain;
   border-radius: 8px;
+  margin-left: calc(50% - 45vw);
 }
 
 /* Progress bar */

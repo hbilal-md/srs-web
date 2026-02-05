@@ -122,7 +122,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
 
   return (
     <div
-      className={`bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer ${card.card_type === 'occlusion' ? 'overflow-visible' : ''}`}
+      className="bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer"
       onClick={!isRevealed ? onReveal : undefined}
     >
       {/* Breadcrumbs */}
@@ -135,7 +135,7 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
       )}
 
       {/* Card content */}
-      <div className={`flex-1 flex items-center justify-center ${card.card_type === 'occlusion' ? 'overflow-visible' : ''}`}>
+      <div className="flex-1 flex items-center justify-center">
         {renderContent()}
       </div>
 

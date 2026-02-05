@@ -222,7 +222,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto overflow-x-hidden">
+    <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto">
       {/* Header with stats */}
       <div className="flex justify-between items-center mb-3">
         <Link href="/" className="text-gray-400 hover:text-white text-sm">
