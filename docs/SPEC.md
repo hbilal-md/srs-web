@@ -142,8 +142,10 @@ S3 (images) ◀─────────────────────�
 | `/` | `src/app/page.tsx` | Home — Quick 10 hero, filtered deck list |
 | `/review` | `src/app/review/page.tsx` | Review session (normal + Quick 10 mode) |
 | `/review?mode=quick10` | (same) | Quick 10: random 10 due cards |
-| `/decks` | `src/app/decks/page.tsx` | Deck management — create, list, delete |
+| `/decks/new` | `src/app/decks/new/page.tsx` | Full-page filtered deck creation form |
 | `/decks/[id]` | `src/app/decks/[id]/page.tsx` | Deck-specific review session |
+
+> **Note:** Deck management (reset, delete, edit) now lives on the home page via a three-dot overflow menu (⋮) on each deck card. The old `/decks` list/management page is deprecated.
 
 ---
 
@@ -229,6 +231,19 @@ NEW ──▶ LEARNING ──▶ REVIEW ◀──▶ RELEARNING
 
 ---
 
+## Known Issues
+
+> Tracked in detail in [PROGRESS.md](./PROGRESS.md). Roadmap and future plans in [ROADMAP.md](./ROADMAP.md).
+
+| Issue | Severity | Root Cause | Fix |
+|-------|----------|-----------|-----|
+| Review page auto-scrolls on reveal | High | `.review-shell` uses `min-height: 100dvh` — footer growth pushes content beyond viewport | Lock to `height: 100dvh`, prevent auto-scroll |
+| iPad occlusion image left-clipped | High | `overflow-x: hidden` on shell clips the `left: 50%; transform: translateX(-50%)` breakout hack | Replace breakout with margin-based centering |
+| Rating buttons too tall, wrong style | Medium | Dark fill background, accent line only on hover, ~50px tall | Transparent body + colored border, fill on press, ~24px tall |
+| Deck management split across two pages | Medium | `/decks` page duplicates home page deck list | Move actions to home page overflow menu, dedicated `/decks/new` for creation |
+
+---
+
 ## Environment Variables
 
 ```
@@ -249,7 +264,8 @@ src/
 │   ├── globals.css                 All styles
 │   ├── review/page.tsx             Review session
 │   ├── decks/
-│   │   ├── page.tsx                Deck management
+│   │   ├── page.tsx                Deck management (deprecated)
+│   │   ├── new/page.tsx            Create filtered deck (full page)
 │   │   └── [id]/page.tsx           Deck review
 │   └── api/
 │       ├── next/route.ts           Next card endpoint
@@ -268,3 +284,10 @@ src/
     ├── supabase.ts                 Client + types
     └── fsrs.ts                     FSRS-4.5 algorithm
 ```
+
+---
+
+## Related Docs
+
+- [PROGRESS.md](./PROGRESS.md) — Current sprint tracking, known issues, testing checklist
+- [ROADMAP.md](./ROADMAP.md) — Long-term vision, feature roadmap, ecosystem plans

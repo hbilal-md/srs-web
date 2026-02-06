@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Deck {
   deck_id: string
@@ -31,6 +32,20 @@ export default function HomePage() {
   const [decks, setDecks] = useState<Deck[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -55,6 +70,31 @@ export default function HomePage() {
     fetchData()
   }, [])
 
+  const handleDeleteDeck = async (deckId: string) => {
+    if (!confirm('Delete this deck?')) return
+    try {
+      await fetch(`/api/decks/${deckId}`, { method: 'DELETE' })
+      setDecks(decks.filter(d => d.deck_id !== deckId))
+    } catch (err) {
+      console.error('Error deleting deck:', err)
+    }
+    setOpenMenu(null)
+  }
+
+  const handleResetDeck = async (deckId: string) => {
+    try {
+      await fetch(`/api/decks/${deckId}/reset`, { method: 'POST' })
+      setDecks(decks.map(d =>
+        d.deck_id === deckId
+          ? { ...d, progress: 0, progressPercent: 0, completed: false }
+          : d
+      ))
+    } catch (err) {
+      console.error('Error resetting deck:', err)
+    }
+    setOpenMenu(null)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -77,7 +117,7 @@ export default function HomePage() {
           Study
         </h1>
         <Link
-          href="/decks"
+          href="/decks/new"
           className="text-sm text-gray-500 hover:text-accent-green transition-colors"
         >
           + New Deck
@@ -144,27 +184,63 @@ export default function HomePage() {
       {decks.length === 0 ? (
         <div className="empty-deck-state">
           <p className="text-gray-500 mb-2">No filtered decks yet</p>
-          <Link href="/decks" className="text-accent-green hover:underline text-sm">
+          <Link href="/decks/new" className="text-accent-green hover:underline text-sm">
             Create your first deck →
           </Link>
         </div>
       ) : (
         <div className="deck-grid">
           {decks.map((deck, index) => (
-            <Link
+            <div
               key={deck.deck_id}
-              href={`/decks/${deck.deck_id}`}
               className="deck-card group"
-              style={{ animationDelay: `${index * 50}ms` }}
+              style={{ animationDelay: `${index * 50}ms`, cursor: 'pointer' }}
+              onClick={() => router.push(`/decks/${deck.deck_id}`)}
             >
               {/* Deck Header */}
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-medium text-gray-200 group-hover:text-white transition-colors leading-tight">
                   {deck.name}
                 </h3>
-                {deck.completed && (
-                  <span className="completed-badge">✓</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {deck.completed && (
+                    <span className="completed-badge">✓</span>
+                  )}
+                  {/* Three-dot menu */}
+                  <div className="relative" ref={openMenu === deck.deck_id ? menuRef : undefined}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenu(openMenu === deck.deck_id ? null : deck.deck_id)
+                      }}
+                      className="deck-menu-btn"
+                    >
+                      ⋮
+                    </button>
+                    {openMenu === deck.deck_id && (
+                      <div className="deck-menu-dropdown">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleResetDeck(deck.deck_id)
+                          }}
+                          className="deck-menu-item"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteDeck(deck.deck_id)
+                          }}
+                          className="deck-menu-item deck-menu-item--danger"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Progress */}
@@ -202,7 +278,6 @@ export default function HomePage() {
                     {imp}
                   </span>
                 ))}
-                {/* Show overflow indicator */}
                 {(
                   (deck.filter_topics?.length || 0) +
                   (deck.filter_subtopics?.length || 0) +
@@ -216,7 +291,7 @@ export default function HomePage() {
               <div className="deck-card-hint">
                 {deck.completed ? 'Review again' : 'Continue'} →
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

@@ -1,6 +1,6 @@
 # SRS Web — Progress Tracker
 
-Last updated: **2026-02-05**
+Last updated: **2026-02-05** | See also: [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md)
 
 ---
 
@@ -21,15 +21,19 @@ Branch: `issue-1-ui-improvements` | PR: [#20](https://github.com/hbilal-md/srs-w
 - [x] **Occlusion image sizing** — Portrait: 100% width. Landscape/wide (>=768px): 90vw breakout
 - [x] **Dark theme refinement** — New CSS variables (--bg-tertiary, --accent-green-dim, rating palette)
 
-### Known Issues (Testing)
+### Known Issues
 
-- [ ] Review page — needs testing pass for edge cases (TBD from manual testing)
+- [ ] **Review page auto-scroll on reveal** — When rating buttons appear after reveal, the page auto-scrolls down, pushing the occlusion image upward. Root cause: `.review-shell` uses `min-height: 100dvh`; footer growth exceeds viewport. Fix: lock to `height: 100dvh`
+- [ ] **iPad occlusion image left-clipped** — Left half of occluded image not visible on iPad. Root cause: `overflow-x: hidden` on `.review-shell` clips the `left: 50%; transform: translateX(-50%)` breakout centering hack. iPad triggers `min-width: 768px` media query even in portrait
+- [ ] **Rating buttons need redesign** — Currently dark fill + accent line on hover. Wanted: transparent body + colored border (rating color), fill on press, half current height (~24px)
+- [ ] **Deck management overhaul** — Move reset/delete/edit to home page three-dot overflow menu (⋮). Replace `/decks` with dedicated `/decks/new` full-page creation form
 - [ ] Occlusion image stacking — verify crossfade works on slow connections
 - [ ] Quick 10 with fewer than 10 due cards — verify graceful handling
-- [ ] Undo in Quick 10 mode — may need special handling (queue re-insertion)
 
 ### Not Started (This Sprint)
 
+- [ ] Rating button redesign (transparent + colored border, fill on press, compact height)
+- [ ] Deck management overhaul (three-dot menu on home, full-page `/decks/new`)
 - [ ] Deck review page (`/decks/[id]`) — has not been redesigned yet, still uses old layout
 
 ---
@@ -103,6 +107,21 @@ Branch: `issue-1-ui-improvements` | PR: [#20](https://github.com/hbilal-md/srs-w
 
 ---
 
+## Git Audit (2026-02-05)
+
+Full audit completed — **no lost work**.
+
+| Finding | Status |
+|---------|--------|
+| `origin/main` at `02e183f` (PR #20 merged) — full codebase deployed | OK |
+| Local `main` is 7 commits behind `origin/main` | Needs `git pull` |
+| `issue-11-undo-last-review` branch fully merged | Can delete |
+| Unmerged commit `a480ada` (docs) on `issue-1-ui-improvements` | Needs PR or merge |
+| 4 orphaned commits (stash/rebase artifacts) | No action needed |
+| Image clipping bug on deployed site | CSS bug, not git issue |
+
+---
+
 ## Architecture Decisions Log
 
 | Date | Decision | Rationale |
@@ -112,3 +131,8 @@ Branch: `issue-1-ui-improvements` | PR: [#20](https://github.com/hbilal-md/srs-w
 | 2026-02-05 | Fixed 2px progress bar at viewport top | Saves vertical space vs inline progress bar |
 | 2026-02-05 | Rating buttons as bordered cards (not solid color) | Matches minimalist aesthetic, accent line hints at color |
 | 2026-02-05 | Action buttons as text links | Suspend/Flag/Undo are secondary actions, shouldn't compete with ratings |
+| 2026-02-05 | Rating buttons → transparent body + colored border | Cleaner look, color fill on press for feedback, half height for space |
+| 2026-02-05 | Deck management → home page overflow menu | Three-dot (⋮) menu per deck card with Edit/Reset/Delete. `/decks` page deprecated |
+| 2026-02-05 | Review shell → fixed `height: 100dvh` | Prevent auto-scroll when rating buttons appear after reveal |
+| 2026-02-05 | Image breakout → margin-based centering | Replace `left/transform` hack that clips on iPad with `overflow-x: hidden` |
+| 2026-02-05 | Undo feature confirmed working | Z shortcut + tappable hint + action row button — no changes needed |
