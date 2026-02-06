@@ -25,6 +25,16 @@ yarn-error.log*
 
 # Local env files
 .env*.local
+.env
+
+# Python (pipelines)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Old card gen folder (replaced by pipelines/)
+srs_card_gen/
 
 # Vercel
 .vercel

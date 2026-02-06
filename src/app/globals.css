@@ -183,6 +183,59 @@ body {
   transform: translateX(0);
 }
 
+/* ── Three-dot menu ── */
+.deck-menu-btn {
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.deck-menu-btn:hover {
+  opacity: 1;
+}
+
+.deck-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 120px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-accent);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.deck-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.deck-menu-item:hover {
+  background: var(--bg-accent);
+}
+
+.deck-menu-item--danger {
+  color: #e74c3c;
+}
+
 /* ═══════════════════════════════════════
    Progress Bar (Deck Cards)
    ═══════════════════════════════════════ */
@@ -198,6 +251,151 @@ body {
   background: var(--accent-green);
   border-radius: 2px;
   transition: width 0.4s ease;
+}
+
+/* ═══════════════════════════════════════
+   Create Deck Page
+   ═══════════════════════════════════════ */
+.create-deck-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-accent);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.15s;
+}
+
+.create-deck-input:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+.create-deck-accordion {
+  border: 1px solid var(--bg-accent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.create-deck-accordion-item {
+  border-bottom: 1px solid var(--bg-accent);
+}
+
+.create-deck-accordion-item:last-child {
+  border-bottom: none;
+}
+
+.create-deck-accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.create-deck-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.create-deck-expand-btn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.create-deck-subtopics {
+  padding: 4px 12px 8px 44px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.create-deck-dropdown {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-accent);
+  border-radius: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.create-deck-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.create-deck-dropdown-item:hover {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.create-deck-toggle {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  border: 1px solid var(--bg-accent);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.create-deck-toggle:hover {
+  border-color: var(--text-muted);
+}
+
+.create-deck-toggle--active {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: var(--bg-primary);
+}
+
+.create-deck-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+
+.create-deck-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.create-deck-btn--primary {
+  background: var(--accent-green);
+  color: var(--bg-primary);
+}
+
+.create-deck-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.create-deck-btn--secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.create-deck-btn--secondary:hover {
+  background: var(--bg-tertiary);
 }
 
 /* ═══════════════════════════════════════
@@ -417,14 +615,14 @@ body {
    REVIEW PAGE — Surgical Minimalism
    ═══════════════════════════════════════════════════════════ */
 
-/* Shell: full viewport, flex column */
+/* Shell: locked to viewport, no auto-scroll */
 .review-shell {
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: var(--bg-primary);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .review-shell--centered {
@@ -508,12 +706,15 @@ body {
   width: 100%;
   padding: 12px 0;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Card wrapper ── */
 .review-card {
   width: 100%;
   max-width: 720px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   animation: reviewCardIn 0.3s ease;
@@ -532,8 +733,8 @@ body {
 
 /* Occlusion: no card background, image is the star */
 .review-card--occlusion {
-  max-width: none;
-  padding: 0 16px;
+  max-width: 90vw;
+  padding: 0;
 }
 
 /* Text cards (Q/A, cloze): subtle container */
@@ -665,8 +866,8 @@ body {
 .occlusion-img--reveal {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  width: 100%;
 }
 
 .occl-visible {
@@ -678,21 +879,6 @@ body {
   pointer-events: none;
 }
 
-/* Landscape / wide: break image out to 90vw */
-@media (orientation: landscape), (min-width: 768px) {
-  .occlusion-image-wrap {
-    width: 90vw;
-    max-width: 90vw;
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .occlusion-img--reveal {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-}
 
 /* Shimmer placeholder while images load */
 .occlusion-shimmer {
@@ -763,44 +949,30 @@ body {
 
 .rating-btn-minimal {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 12px 4px 10px;
-  border: 1px solid var(--bg-accent);
-  border-radius: 10px;
-  background: var(--bg-secondary);
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border: 1.5px solid var(--btn-accent);
+  border-radius: 8px;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
-  position: relative;
-  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-/* Subtle top accent line */
-.rating-btn-minimal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: var(--btn-accent);
-  border-radius: 0 0 2px 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.rating-btn-minimal:hover:not(:disabled) {
-  border-color: var(--btn-accent);
-  background: var(--bg-tertiary);
-}
-
-.rating-btn-minimal:hover:not(:disabled)::before {
-  opacity: 1;
+@media (hover: hover) {
+  .rating-btn-minimal:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--btn-accent) 15%, transparent);
+  }
 }
 
 .rating-btn-minimal:active:not(:disabled) {
-  transform: scale(0.97);
+  background: var(--btn-accent);
+}
+
+.rating-btn-minimal:active:not(:disabled) .rating-label,
+.rating-btn-minimal:active:not(:disabled) .rating-interval {
+  color: var(--bg-primary);
 }
 
 .rating-btn-minimal:disabled {
@@ -821,14 +993,7 @@ body {
 }
 
 .rating-key {
-  font-size: 10px;
-  font-family: monospace;
-  color: var(--text-muted);
-  opacity: 0.4;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-top: 2px;
+  display: none;
 }
 
 /* ── Action buttons — discreet ── */
