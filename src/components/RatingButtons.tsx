@@ -13,49 +13,42 @@ const RATING_CONFIG = [
     rating: Rating.AGAIN,
     label: 'Again',
     key: '1',
-    color: 'bg-red-600 hover:bg-red-500',
+    accent: 'var(--rating-again)',
   },
   {
     rating: Rating.HARD,
     label: 'Hard',
     key: '2',
-    color: 'bg-orange-600 hover:bg-orange-500',
+    accent: 'var(--rating-hard)',
   },
   {
     rating: Rating.GOOD,
     label: 'Good',
     key: '3',
-    color: 'bg-accent-green hover:opacity-90',
+    accent: 'var(--rating-good)',
   },
   {
     rating: Rating.EASY,
     label: 'Easy',
     key: '4',
-    color: 'bg-blue-600 hover:bg-blue-500',
+    accent: 'var(--rating-easy)',
   },
 ]
 
 export default function RatingButtons({ intervals, onRate, disabled }: RatingButtonsProps) {
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {RATING_CONFIG.map(({ rating, label, key, color }) => (
+    <div className="rating-row">
+      {RATING_CONFIG.map(({ rating, label, key, accent }) => (
         <button
           key={rating}
           onClick={() => onRate(rating)}
           disabled={disabled}
-          className={`
-            rating-btn ${color}
-            px-4 py-5
-            rounded-lg font-medium
-            flex flex-col items-center gap-1.5
-            text-white
-          `}
+          className="rating-btn-minimal"
+          style={{ '--btn-accent': accent } as React.CSSProperties}
         >
-          <span className="text-base font-semibold">{label}</span>
-          <span className="text-sm opacity-90">
-            {formatInterval(intervals[rating])}
-          </span>
-          <span className="kbd text-xs">{key}</span>
+          <span className="rating-label">{label}</span>
+          <span className="rating-interval">{formatInterval(intervals[rating])}</span>
+          <span className="rating-key">{key}</span>
         </button>
       ))}
     </div>

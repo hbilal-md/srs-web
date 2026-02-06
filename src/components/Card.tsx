@@ -34,86 +34,131 @@ function parseCloze(text: string): { question: string; answer: string } {
 }
 
 export default function Card({ card, isRevealed, onReveal }: CardProps) {
-  const [imageLoaded, setImageLoaded] = useState(false)
+  const [blockedLoaded, setBlockedLoaded] = useState(false)
+  const [revealLoaded, setRevealLoaded] = useState(false)
 
   // Reset image loaded state when card changes
   useEffect(() => {
-    setImageLoaded(false)
+    setBlockedLoaded(false)
+    setRevealLoaded(false)
   }, [card.card_id])
 
-  const renderContent = () => {
-    if (card.card_type === 'occlusion') {
-      return (
-        <div className="flex flex-col items-center gap-4 w-full">
-          {/* Question */}
-          <p className="text-2xl text-center text-gray-300 font-medium">
-            {cleanCardText(card.question || 'What is hidden?')}
-          </p>
+  const isOcclusion = card.card_type === 'occlusion'
 
-          {/* Image - shows blocked or reveal based on state */}
-          {!isRevealed && card.blocked_image && (
-            <img
-              src={card.blocked_image}
-              alt="Blocked"
-              className="card-image-occlusion"
-              onLoad={() => setImageLoaded(true)}
-            />
+  const renderContent = () => {
+    if (isOcclusion) {
+      const questionText = cleanCardText(card.question || '')
+
+      return (
+        <div className="occlusion-layout" onClick={!isRevealed ? onReveal : undefined}>
+          {/* Question text — only show if meaningful */}
+          {questionText && questionText !== 'What is hidden?' && (
+            <p className="occlusion-question">{questionText}</p>
           )}
-          {isRevealed && card.reveal_image && (
-            <img
-              src={card.reveal_image}
-              alt="Revealed"
-              className="card-image-occlusion"
-            />
+
+          {/* Stacked image container — both images load simultaneously */}
+          <div className="occlusion-image-wrap">
+            {card.blocked_image && (
+              <img
+                src={card.blocked_image}
+                alt=""
+                className={`occlusion-img occlusion-img--blocked ${isRevealed ? 'occl-hidden' : 'occl-visible'}`}
+                onLoad={() => setBlockedLoaded(true)}
+                draggable={false}
+              />
+            )}
+            {card.reveal_image && (
+              <img
+                src={card.reveal_image}
+                alt=""
+                className={`occlusion-img occlusion-img--reveal ${isRevealed ? 'occl-visible' : 'occl-hidden'}`}
+                onLoad={() => setRevealLoaded(true)}
+                draggable={false}
+              />
+            )}
+
+            {/* Subtle loading shimmer while images load */}
+            {!blockedLoaded && !revealLoaded && (
+              <div className="occlusion-shimmer" />
+            )}
+          </div>
+
+          {/* Tap hint */}
+          {!isRevealed && blockedLoaded && (
+            <div className="review-tap-hint">
+              Tap image to reveal
+            </div>
           )}
         </div>
       )
     }
 
     if (card.card_type === 'cloze') {
-      const { question, answer } = parseCloze(card.cloze_text || card.question || '')
+      const { question } = parseCloze(card.cloze_text || card.question || '')
       return (
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-2xl text-center leading-relaxed">
-            {isRevealed ? (
-              // Show full text with answer highlighted
-              (card.cloze_text || card.question || '').replace(
-                /\[([^\]]+)\]/,
-                '<span class="text-accent-green font-bold">$1</span>'
-              ).split('<span').map((part, i) => {
-                if (i === 0) return part
-                const [inner, rest] = part.split('</span>')
-                return (
-                  <span key={i}>
-                    <span className="text-accent-green font-bold">
-                      {inner.replace('class="text-accent-green font-bold">', '')}
-                    </span>
-                    {rest}
-                  </span>
-                )
-              })
-            ) : (
-              question
-            )}
-          </p>
+        <div className="review-card-inner" onClick={!isRevealed ? onReveal : undefined}>
+          {/* Breadcrumb */}
+          {(card.topic || card.subtopic) && (
+            <div className="review-breadcrumb">
+              {card.topic}{card.topic && card.subtopic && ' · '}{card.subtopic}
+            </div>
+          )}
+
+          <div className="review-card-body">
+            <p className="review-card-text">
+              {isRevealed ? (
+                // Show full text with answer highlighted
+                (card.cloze_text || card.question || '').split(/\[([^\]]+)\]/).map((part, i) => {
+                  if (i % 2 === 1) {
+                    return (
+                      <span key={i} className="cloze-answer">{part}</span>
+                    )
+                  }
+                  return part
+                })
+              ) : (
+                question
+              )}
+            </p>
+          </div>
+
+          {!isRevealed && (
+            <div className="review-tap-hint">
+              Tap to reveal
+            </div>
+          )}
         </div>
       )
     }
 
     // Q/A card
     return (
-      <div className="flex flex-col items-center gap-8">
-        {/* Question */}
-        <p className="text-2xl text-center leading-relaxed font-medium">
-          {cleanCardText(card.question || '')}
-        </p>
+      <div className="review-card-inner" onClick={!isRevealed ? onReveal : undefined}>
+        {/* Breadcrumb */}
+        {(card.topic || card.subtopic) && (
+          <div className="review-breadcrumb">
+            {card.topic}{card.topic && card.subtopic && ' · '}{card.subtopic}
+          </div>
+        )}
 
-        {/* Answer (when revealed) */}
-        {isRevealed && (
-          <div className="border-t-2 border-gray-600 pt-8 w-full">
-            <p className="text-2xl font-medium text-accent-green text-center">
-              {card.answer}
-            </p>
+        <div className="review-card-body">
+          <p className="review-card-text">
+            {cleanCardText(card.question || '')}
+          </p>
+
+          {isRevealed && (
+            <>
+              <div className="review-divider" />
+              <p className="review-card-answer">
+                {card.answer}
+              </p>
+            </>
+          )}
+        </div>
+
+        {!isRevealed && (
+          <div className="review-tap-hint">
+            Tap to reveal
           </div>
         )}
       </div>
@@ -121,30 +166,14 @@ export default function Card({ card, isRevealed, onReveal }: CardProps) {
   }
 
   return (
-    <div
-      className="bg-dark-card rounded-xl p-8 min-h-[400px] flex flex-col cursor-pointer"
-      onClick={!isRevealed ? onReveal : undefined}
-    >
-      {/* Breadcrumbs */}
-      {(card.topic || card.subtopic) && (
-        <div className="text-sm text-gray-500 mb-2">
-          {card.topic}
-          {card.topic && card.subtopic && ' → '}
-          {card.subtopic}
+    <div className={`review-card ${isOcclusion ? 'review-card--occlusion' : 'review-card--text'}`}>
+      {/* Breadcrumb for occlusion cards — outside the card body */}
+      {isOcclusion && (card.topic || card.subtopic) && (
+        <div className="review-breadcrumb">
+          {card.topic}{card.topic && card.subtopic && ' · '}{card.subtopic}
         </div>
       )}
-
-      {/* Card content */}
-      <div className="flex-1 flex items-center justify-center">
-        {renderContent()}
-      </div>
-
-      {/* Tap to reveal hint */}
-      {!isRevealed && (
-        <div className="text-center text-gray-500 text-sm mt-2">
-          Tap to reveal • <span className="kbd">Space</span>
-        </div>
-      )}
+      {renderContent()}
     </div>
   )
 }
