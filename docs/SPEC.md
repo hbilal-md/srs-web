@@ -21,14 +21,19 @@ A web-first spaced repetition system for board exam preparation, built with Next
 ## Architecture
 
 ```
-PDF Pipeline (local Python) ──▶ Supabase (PostgreSQL)
-                                     ▲
-S3 (images) ◀────────────────────────┤
-                                     │
-                              Vercel (Next.js)
+pipelines/ (local Python)
+├── kurts_notes/     ──▶ Supabase (PostgreSQL)
+├── textbook/  (planned)        ▲
+└── shared/ (S3, Supabase)      │
+                                │
+S3 (images) ◀───────────────────┤
+                                │
+                         Vercel (Next.js)
 ```
 
-- Cards are ingested from PDFs via an offline Python pipeline into Supabase
+- Cards are ingested from PDFs via offline Python pipelines (`pipelines/`) into Supabase
+- Each pipeline framework handles a different source format (Kurt's notes, textbooks, etc.)
+- Shared utilities handle S3 image upload and Supabase card insertion
 - Occlusion images (blocked + revealed) are stored in S3
 - The Next.js app reads/writes card state through API routes using the Supabase service key
 - Deployed to Vercel with automatic GitHub deploys
@@ -231,19 +236,6 @@ NEW ──▶ LEARNING ──▶ REVIEW ◀──▶ RELEARNING
 
 ---
 
-## Known Issues
-
-> Tracked in detail in [PROGRESS.md](./PROGRESS.md). Roadmap and future plans in [ROADMAP.md](./ROADMAP.md).
-
-| Issue | Severity | Root Cause | Fix |
-|-------|----------|-----------|-----|
-| Review page auto-scrolls on reveal | High | `.review-shell` uses `min-height: 100dvh` — footer growth pushes content beyond viewport | Lock to `height: 100dvh`, prevent auto-scroll |
-| iPad occlusion image left-clipped | High | `overflow-x: hidden` on shell clips the `left: 50%; transform: translateX(-50%)` breakout hack | Replace breakout with margin-based centering |
-| Rating buttons too tall, wrong style | Medium | Dark fill background, accent line only on hover, ~50px tall | Transparent body + colored border, fill on press, ~24px tall |
-| Deck management split across two pages | Medium | `/decks` page duplicates home page deck list | Move actions to home page overflow menu, dedicated `/decks/new` for creation |
-
----
-
 ## Environment Variables
 
 ```
@@ -283,6 +275,22 @@ src/
 └── lib/
     ├── supabase.ts                 Client + types
     └── fsrs.ts                     FSRS-4.5 algorithm
+
+pipelines/
+├── shared/
+│   ├── models.py                   CardData dataclass
+│   ├── s3_storage.py               S3ImageStorage (upload, dedup, obfuscated keys)
+│   └── supabase_writer.py          SupabaseCardWriter (batch insert)
+├── kurts_notes/
+│   ├── run.py                      Entry point: python -m kurts_notes.run /path/to/folder
+│   ├── slide_processor.py          Slide extraction, OCR, AI classification, card generation
+│   └── obsidian_notes.py           Reference note + MoC generation
+├── archive/
+│   ├── legacy/                     Original srs_card_gen scripts
+│   └── planning_docs/              Original Obsidian planning notes
+├── pyproject.toml                  Python dependencies
+├── .env.example                    Credential template
+└── .gitignore                      Python-specific ignores
 ```
 
 ---

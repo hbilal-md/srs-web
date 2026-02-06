@@ -49,34 +49,35 @@ A shared system across all ecosystem apps, inspired by factory-style games (Fact
 
 ## SRS Features Roadmap
 
-### Near-Term (Current Sprint)
+### Completed (2026-02-06)
+
+- [x] Fix review page auto-scroll on reveal — `height: 100dvh`
+- [x] Fix iPad/all-device image centering — `max-width: 90vw; margin: 0 auto`
+- [x] Rating button redesign — transparent + colored border, fill on press
+- [x] Deck management overhaul — three-dot menu on home, `/decks/new`
+- [x] Pipeline reorganization — `srs_card_gen/` → `pipelines/` with shared utilities
+
+### Near-Term (Current Sprint): Card Ingestion Pipelines
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Fix review page auto-scroll on reveal | High | `height: 100dvh` fix — usability blocker |
-| Fix iPad occlusion image clipping | High | Replace breakout centering hack — usability blocker |
-| Rating button redesign | Medium | Transparent + colored border, fill on press, half height |
-| Deck management overhaul | Medium | Three-dot menu on home, full-page `/decks/new`, deprecate `/decks` |
+| **Kurt's Notes pipeline fixes** | High | User has specific fixes needed in the existing framework |
+| **Test pipeline end-to-end** | High | Verify `pipelines/` structure works with real PDFs |
+| **New pipeline frameworks** | Medium | Textbook chapters, lecture notes, or other source types |
+
+> **Priority shift:** Review UI is dialed in. Card volume is now the bottleneck. Focus is on getting pipelines working and battle-tested, then building the ingestion dashboard.
 
 ### Medium-Term
 
 | Feature | GitHub Issue | Notes |
 |---------|-------------|-------|
+| **Card Ingestion Dashboard** | #13, #5, #4, #3 | Frontend UI to upload PDFs, select pipeline, auto-generate cards |
 | **Review Heatmap** | #12 | GitHub-style contribution grid — daily review activity over months |
 | **Leech Detection** | #10 | Auto-flag cards with high lapse counts, action options (suspend, reset, edit) |
 | **Session Summaries** | — | Post-session stats: cards reviewed, accuracy, time spent, streaks, XP earned |
 | **Notifications** | — | Daily review reminders, streak-at-risk alerts (push/browser) |
 | **Thin API Client** | #7 | Replace inline `fetch()` calls with a typed client layer |
 | **Loading & Error States** | #8 | Proper error handling throughout (loading dots partially done) |
-
-### Medium-Term (Pipeline & Scale)
-
-| Feature | GitHub Issue | Notes |
-|---------|-------------|-------|
-| **Pipeline Reorganization** | — | Compartmentalize Python card-creation scripts in `pipelines/` with shared utilities |
-| **Card Ingestion Dashboard** | #13, #5, #4, #3 | Frontend UI to upload PDFs, select a processing pipeline, auto-generate cards |
-
-> **Priority shift:** Card volume is the bottleneck now that the review UI is dialing in. The ingestion dashboard is needed once 2-3 pipeline frameworks are working and battle-tested. Pipeline reorg comes first.
 
 ### Long-Term
 
@@ -129,7 +130,7 @@ PDF → Extract slides → OCR text spans → AI classify (skip low-value)
 
 | Pipeline | Source Material | Status | Approach |
 |----------|----------------|--------|----------|
-| Kurt's Notes | Structured PDF slides | **Active** — reorganized in `pipelines/kurts_notes/` |  OCR + AI slide analysis |
+| Kurt's Notes | Structured PDF slides | **Active** — `pipelines/kurts_notes/`, fixes in progress | OCR + AI slide analysis |
 | Textbook Chapters | Dense reference text | Planned | Text extraction + AI summarization → Q/A + cloze |
 | Lecture Notes | Slide-based content | Planned | Similar to Kurt's Notes but different slide layouts |
 | Journal Articles | Research papers | Planned | Abstract/methods/results extraction → targeted cards |
@@ -168,7 +169,7 @@ Willing to invest in paid plans — personal tools > third-party subscriptions.
 
 | Issue | Maps To |
 |-------|---------|
-| [#1](https://github.com/hbilal-md/srs-web/issues/1) UI improvements | Current sprint (near-term) |
+| [#1](https://github.com/hbilal-md/srs-web/issues/1) UI improvements | **Done** — merged PR #21 (2026-02-06) |
 | [#3](https://github.com/hbilal-md/srs-web/issues/3) Process more Kurt's notes | Card Ingestion Dashboard |
 | [#4](https://github.com/hbilal-md/srs-web/issues/4) JH Interesting Case bot | Card Ingestion Dashboard |
 | [#5](https://github.com/hbilal-md/srs-web/issues/5) CP Compendium parser | Card Ingestion Dashboard |
