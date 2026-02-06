@@ -262,10 +262,10 @@ export default function DeckReviewPage() {
 
           <div className="flex gap-4 justify-center">
             <Link
-              href="/decks"
+              href="/"
               className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
             >
-              Back to Decks
+              Back Home
             </Link>
             <button
               onClick={async () => {
@@ -287,8 +287,8 @@ export default function DeckReviewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 mb-4">Deck not found or empty.</p>
-          <Link href="/decks" className="text-accent-green hover:opacity-80">
-            Back to Decks
+          <Link href="/" className="text-accent-green hover:opacity-80">
+            Back Home
           </Link>
         </div>
       </div>
@@ -299,8 +299,8 @@ export default function DeckReviewPage() {
     <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
-        <Link href="/decks" className="text-gray-400 hover:text-white text-sm">
-          ← Decks
+        <Link href="/" className="text-gray-400 hover:text-white text-sm">
+          ← Home
         </Link>
         {deck && (
           <div className="text-sm text-gray-400">

@@ -714,6 +714,7 @@ body {
 .review-card {
   width: 100%;
   max-width: 720px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   animation: reviewCardIn 0.3s ease;
