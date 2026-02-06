@@ -18,59 +18,40 @@ export default function ActionButtons({ onAbandon, onFlag, onUndo, disabled }: A
       setShowAbandonConfirm(false)
     } else {
       setShowAbandonConfirm(true)
-      // Auto-hide after 3 seconds
       setTimeout(() => setShowAbandonConfirm(false), 3000)
     }
   }
 
   return (
-    <div className="flex gap-2 justify-center">
-      {/* Undo button - only shown when available */}
-      {onUndo && (
-        <button
-          onClick={onUndo}
-          disabled={disabled}
-          className="
-            px-3 py-2 rounded-lg text-sm
-            bg-gray-700 text-gray-300 hover:bg-gray-600
-            transition-colors
-          "
-          title="Undo last review (Z)"
-        >
-          ↩ Undo
-        </button>
-      )}
-
-      {/* Abandon button */}
+    <div className="action-row">
       <button
         onClick={handleAbandon}
         disabled={disabled}
-        className={`
-          px-3 py-2 rounded-lg text-sm
-          ${showAbandonConfirm
-            ? 'bg-red-600 text-white'
-            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }
-          transition-colors
-        `}
-        title="Abandon card (never show again)"
+        className={`action-link ${showAbandonConfirm ? 'action-link--danger' : ''}`}
       >
-        {showAbandonConfirm ? 'Confirm abandon?' : '🗑 Abandon'}
+        {showAbandonConfirm ? 'Confirm suspend?' : 'Suspend'}
       </button>
-
-      {/* Flag button */}
+      <span className="action-dot" />
       <button
         onClick={onFlag}
         disabled={disabled}
-        className="
-          px-3 py-2 rounded-lg text-sm
-          bg-gray-700 text-gray-300 hover:bg-gray-600
-          transition-colors
-        "
-        title="Flag card for editing"
+        className="action-link"
       >
-        🚩 Flag
+        Flag
       </button>
+      {onUndo && (
+        <>
+          <span className="action-dot" />
+          <button
+            onClick={onUndo}
+            disabled={disabled}
+            className="action-link"
+            title="Undo last review (Z)"
+          >
+            Undo
+          </button>
+        </>
+      )}
     </div>
   )
 }

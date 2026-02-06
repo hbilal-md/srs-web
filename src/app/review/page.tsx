@@ -122,13 +122,11 @@ function ReviewContent() {
     const nextIndex = quick10Index + 1
 
     if (nextIndex >= quick10Queue.length) {
-      // Session complete
       setQuick10SessionComplete(true)
       setCard(null)
       return
     }
 
-    // Fetch intervals for next card
     try {
       const nextCard = quick10Queue[nextIndex]
       const res = await fetch(`/api/next?cardId=${nextCard.card_id}`)
@@ -245,7 +243,6 @@ function ReviewContent() {
       await fetch(`/api/cards/${card.card_id}/flag`, {
         method: 'POST',
       })
-      // Show brief feedback
       alert('Card flagged for editing')
     } catch (err) {
       console.error('Error flagging card:', err)
@@ -255,7 +252,6 @@ function ReviewContent() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
@@ -294,11 +290,11 @@ function ReviewContent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isRevealed, intervals, isSubmitting, lastReviewId])
 
-  // Loading state
+  // Loading
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-pulse">
+      <div className="review-shell">
+        <div className="loading-pulse" style={{ marginTop: '45vh' }}>
           <div className="loading-dot"></div>
           <div className="loading-dot"></div>
           <div className="loading-dot"></div>
@@ -307,22 +303,18 @@ function ReviewContent() {
     )
   }
 
-  // Quick 10 session complete
+  // Quick 10 complete
   if (isQuick10 && quick10SessionComplete) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <div className="quick10-complete-icon mb-4">⚡</div>
-          <h1 className="text-2xl font-bold mb-2">Quick 10 Complete!</h1>
-          <p className="text-gray-400 mb-6">
-            You reviewed {quick10Queue.length} card{quick10Queue.length !== 1 ? 's' : ''}
+      <div className="review-shell review-shell--centered">
+        <div className="review-complete">
+          <div className="quick10-complete-icon">⚡</div>
+          <h1 className="review-complete-title">Quick 10 Complete</h1>
+          <p className="review-complete-sub">
+            {quick10Queue.length} card{quick10Queue.length !== 1 ? 's' : ''} reviewed
           </p>
-
-          <div className="flex gap-3 justify-center">
-            <Link
-              href="/"
-              className="px-6 py-3 bg-dark-card hover:bg-dark-accent rounded-lg transition-colors"
-            >
+          <div className="review-complete-actions">
+            <Link href="/" className="review-complete-btn review-complete-btn--ghost">
               Home
             </Link>
             <button
@@ -330,7 +322,7 @@ function ReviewContent() {
                 setQuick10SessionComplete(false)
                 initQuick10()
               }}
-              className="px-6 py-3 bg-accent-green hover:opacity-90 rounded-lg text-gray-900 font-medium"
+              className="review-complete-btn review-complete-btn--primary"
             >
               Another 10
             </button>
@@ -343,29 +335,26 @@ function ReviewContent() {
   // No cards due
   if (!card) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <div className="empty-state-icon mx-auto mb-4">✓</div>
-          <h1 className="text-2xl font-bold mb-2">All caught up!</h1>
-          <p className="text-gray-400 mb-6">No cards due right now.</p>
+      <div className="review-shell review-shell--centered">
+        <div className="review-complete">
+          <div className="empty-state-icon">✓</div>
+          <h1 className="review-complete-title">All caught up</h1>
+          <p className="review-complete-sub">No cards due right now</p>
 
           {stats && (
-            <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto text-sm mb-6">
-              <div className="bg-dark-card p-4 rounded-lg">
-                <div className="text-2xl font-bold">{stats.reviewedToday}</div>
-                <div className="text-gray-400">Reviewed today</div>
+            <div className="review-end-stats">
+              <div className="review-end-stat">
+                <span className="review-end-stat-val">{stats.reviewedToday}</span>
+                <span className="review-end-stat-label">reviewed</span>
               </div>
-              <div className="bg-dark-card p-4 rounded-lg">
-                <div className="text-2xl font-bold">{stats.dueToday}</div>
-                <div className="text-gray-400">Due later today</div>
+              <div className="review-end-stat">
+                <span className="review-end-stat-val">{stats.dueToday}</span>
+                <span className="review-end-stat-label">due later</span>
               </div>
             </div>
           )}
 
-          <Link
-            href="/"
-            className="px-6 py-3 bg-accent-green hover:opacity-90 rounded-lg text-gray-900 inline-block"
-          >
+          <Link href="/" className="review-complete-btn review-complete-btn--primary" style={{ marginTop: '24px' }}>
             Back Home
           </Link>
         </div>
@@ -373,92 +362,84 @@ function ReviewContent() {
     )
   }
 
-  // Calculate progress for Quick 10
+  // Progress calculation
   const quick10Progress = isQuick10
     ? ((quick10Index + 1) / quick10Queue.length) * 100
     : 0
+  const normalProgress = Math.min(100, (stats?.reviewedToday || 0) / Math.max(1, (stats?.dueToday || 1)) * 100)
 
   return (
-    <div className="min-h-screen flex flex-col p-4 max-w-4xl mx-auto">
-      {/* Header with stats */}
-      <div className="flex justify-between items-center mb-3">
-        <Link href="/" className="text-gray-400 hover:text-white text-sm">
-          ← Home
-        </Link>
-
-        {isQuick10 ? (
-          <div className="flex items-center gap-2">
-            <span className="quick-deck-badge">⚡ Quick 10</span>
-            <span className="text-sm text-gray-400">
-              {quick10Index + 1}/{quick10Queue.length}
-            </span>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-400">
-            {remaining} card{remaining !== 1 ? 's' : ''} remaining
-          </div>
-        )}
-
-        {stats && !isQuick10 && (
-          <div className="flex gap-4 text-sm text-gray-400">
-            <span>Today: {stats.reviewedToday}</span>
-            <span>Retention: {stats.retentionRate}%</span>
-          </div>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="progress-bar mb-3">
+    <div className="review-shell">
+      {/* Top progress bar — thin line across full width */}
+      <div className="review-progress-track">
         <div
-          className="progress-fill"
-          style={{
-            width: isQuick10
-              ? `${quick10Progress}%`
-              : `${Math.min(100, (stats?.reviewedToday || 0) / Math.max(1, (stats?.dueToday || 1)) * 100)}%`
-          }}
+          className="review-progress-fill"
+          style={{ width: `${isQuick10 ? quick10Progress : normalProgress}%` }}
         />
       </div>
 
-      {/* Card */}
-      <div className="flex-1 flex flex-col">
+      {/* Compact header */}
+      <header className="review-header">
+        <Link href="/" className="review-back" aria-label="Back home">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </Link>
+
+        {isQuick10 ? (
+          <div className="review-counter">
+            <span className="review-counter-badge">⚡</span>
+            <span>{quick10Index + 1}/{quick10Queue.length}</span>
+          </div>
+        ) : (
+          <span className="review-counter">
+            {remaining} remaining
+          </span>
+        )}
+
+        {stats && !isQuick10 && (
+          <div className="review-stats-row">
+            <span>{stats.reviewedToday} today</span>
+            <span className="review-stats-sep">·</span>
+            <span>{stats.retentionRate}%</span>
+          </div>
+        )}
+      </header>
+
+      {/* Card area — takes remaining space */}
+      <main className="review-body">
         <Card
           card={card}
           isRevealed={isRevealed}
           onReveal={handleReveal}
         />
-      </div>
+      </main>
 
-      {/* Rating buttons (only when revealed) */}
-      {isRevealed && intervals && (
-        <div className="mt-4 space-y-3">
-          <RatingButtons
-            intervals={intervals}
-            onRate={handleRate}
-            disabled={isSubmitting}
-          />
-          <ActionButtons
-            onAbandon={handleAbandon}
-            onFlag={handleFlag}
-            onUndo={lastReviewId ? handleUndo : undefined}
-            disabled={isSubmitting}
-          />
-        </div>
-      )}
-
-      {/* Keyboard hints */}
-      <div className="mt-4 text-center text-xs text-gray-500">
-        {!isRevealed ? (
-          <span>
-            <span className="kbd">Space</span> to reveal
-            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
-          </span>
+      {/* Bottom controls */}
+      <footer className="review-footer">
+        {isRevealed && intervals ? (
+          <div className="review-controls-revealed">
+            <RatingButtons
+              intervals={intervals}
+              onRate={handleRate}
+              disabled={isSubmitting}
+            />
+            <ActionButtons
+              onAbandon={handleAbandon}
+              onFlag={handleFlag}
+              onUndo={lastReviewId ? handleUndo : undefined}
+              disabled={isSubmitting}
+            />
+          </div>
         ) : (
-          <span>
-            <span className="kbd">1-4</span> to rate
-            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
-          </span>
+          <div className="review-hint-bar">
+            <span className="kbd">Space</span> to reveal
+            {lastReviewId && (
+              <> · <span className="kbd review-undo-hint" onClick={handleUndo}>Z undo</span></>
+            )}
+          </div>
         )}
-      </div>
+      </footer>
     </div>
   )
 }
@@ -466,8 +447,8 @@ function ReviewContent() {
 export default function ReviewPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-pulse">
+      <div className="review-shell">
+        <div className="loading-pulse" style={{ marginTop: '45vh' }}>
           <div className="loading-dot"></div>
           <div className="loading-dot"></div>
           <div className="loading-dot"></div>
