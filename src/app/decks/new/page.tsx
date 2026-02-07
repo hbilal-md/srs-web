@@ -4,8 +4,16 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+interface SubtopicStats {
+  total: number
+  new: number
+  due: number
+  learning: number
+}
+
 interface FilterOptions {
   topicTree: Record<string, string[]>
+  subtopicStats: Record<string, SubtopicStats>
   topics: string[]
   subtopics: string[]
   tags: string[]
@@ -18,6 +26,7 @@ export default function NewDeckPage() {
   const router = useRouter()
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     topicTree: {},
+    subtopicStats: {},
     topics: [],
     subtopics: [],
     tags: [],
@@ -39,6 +48,8 @@ export default function NewDeckPage() {
   const [difficultyMax, setDifficultyMax] = useState<number | ''>('')
   const [sortOrder, setSortOrder] = useState('due_date')
   const [maxCards, setMaxCards] = useState<number | ''>('')
+  const [newPerSession, setNewPerSession] = useState<number | ''>(20)
+  const [reviewPerSession, setReviewPerSession] = useState<number | ''>(200)
   const [isCreating, setIsCreating] = useState(false)
 
   // Topic accordion state
@@ -67,6 +78,7 @@ export default function NewDeckPage() {
         const data = await res.json()
         setFilterOptions({
           topicTree: data.topicTree || {},
+          subtopicStats: data.subtopicStats || {},
           topics: data.topics || [],
           subtopics: data.subtopics || [],
           tags: data.tags || [],
@@ -104,6 +116,8 @@ export default function NewDeckPage() {
           filterDifficultyMax: difficultyMax || null,
           sortOrder,
           maxCards: maxCards || null,
+          newPerSession: newPerSession || 20,
+          reviewPerSession: reviewPerSession || 200,
         }),
       })
 
@@ -254,28 +268,49 @@ export default function NewDeckPage() {
                         className="w-4 h-4 rounded accent-[#8AC926]"
                       />
                       <span className="font-medium text-gray-200">{topic}</span>
-                      <span className="text-xs text-gray-500">
-                        ({subtopics.length})
-                      </span>
+                      {(() => {
+                        const agg = subtopics.reduce((acc, st) => {
+                          const s = filterOptions.subtopicStats[st]
+                          if (s) { acc.total += s.total; acc.new += s.new; acc.due += s.due; acc.learning += s.learning }
+                          return acc
+                        }, { total: 0, new: 0, due: 0, learning: 0 })
+                        return (
+                          <span className="text-xs text-gray-500 ml-auto flex items-center gap-1.5">
+                            <span>{agg.total}</span>
+                            {agg.new > 0 && <span className="text-blue-400">{agg.new} new</span>}
+                            {agg.due > 0 && <span className="text-green-400">{agg.due} due</span>}
+                          </span>
+                        )
+                      })()}
                     </label>
                   </div>
 
                   {expandedTopics.includes(topic) && subtopics.length > 0 && (
                     <div className="create-deck-subtopics">
-                      {subtopics.map(subtopic => (
-                        <label
-                          key={subtopic}
-                          className="flex items-center gap-2 py-1.5 cursor-pointer select-none text-gray-300 hover:text-white"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSubtopics.includes(subtopic)}
-                            onChange={() => toggleSubtopicSelection(topic, subtopic)}
-                            className="w-4 h-4 rounded accent-[#8AC926]"
-                          />
-                          <span className="text-sm">{subtopic}</span>
-                        </label>
-                      ))}
+                      {subtopics.map(subtopic => {
+                        const stats = filterOptions.subtopicStats[subtopic]
+                        return (
+                          <label
+                            key={subtopic}
+                            className="flex items-center gap-2 py-1.5 cursor-pointer select-none text-gray-300 hover:text-white"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSubtopics.includes(subtopic)}
+                              onChange={() => toggleSubtopicSelection(topic, subtopic)}
+                              className="w-4 h-4 rounded accent-[#8AC926]"
+                            />
+                            <span className="text-sm flex-1">{subtopic}</span>
+                            {stats && (
+                              <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                                <span>{stats.total}</span>
+                                {stats.new > 0 && <span className="text-blue-400">{stats.new} new</span>}
+                                {stats.due > 0 && <span className="text-green-400">{stats.due} due</span>}
+                              </span>
+                            )}
+                          </label>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -462,9 +497,41 @@ export default function NewDeckPage() {
           </select>
         </div>
 
+        {/* Per-Session Limits */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">
+            Cards Per Session
+            <span className="text-xs text-gray-600 ml-1">(daily limits)</span>
+          </label>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">New</label>
+              <input
+                type="number"
+                value={newPerSession}
+                onChange={e => setNewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="20"
+                min={1}
+                className="create-deck-input"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Review</label>
+              <input
+                type="number"
+                value={reviewPerSession}
+                onChange={e => setReviewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="200"
+                min={1}
+                className="create-deck-input"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Max Cards */}
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Max Cards (optional)</label>
+          <label className="block text-sm text-gray-400 mb-2">Max Cards in Pool (optional)</label>
           <input
             type="number"
             value={maxCards}

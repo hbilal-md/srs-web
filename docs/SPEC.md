@@ -21,14 +21,19 @@ A web-first spaced repetition system for board exam preparation, built with Next
 ## Architecture
 
 ```
-PDF Pipeline (local Python) ──▶ Supabase (PostgreSQL)
-                                     ▲
-S3 (images) ◀────────────────────────┤
-                                     │
-                              Vercel (Next.js)
+pipelines/ (local Python)
+├── kurts_notes/     ──▶ Supabase (PostgreSQL)
+├── textbook/  (planned)        ▲
+└── shared/ (S3, Supabase)      │
+                                │
+S3 (images) ◀───────────────────┤
+                                │
+                         Vercel (Next.js)
 ```
 
-- Cards are ingested from PDFs via an offline Python pipeline into Supabase
+- Cards are ingested from PDFs via offline Python pipelines (`pipelines/`) into Supabase
+- Each pipeline framework handles a different source format (Kurt's notes, textbooks, etc.)
+- Shared utilities handle S3 image upload and Supabase card insertion
 - Occlusion images (blocked + revealed) are stored in S3
 - The Next.js app reads/writes card state through API routes using the Supabase service key
 - Deployed to Vercel with automatic GitHub deploys
@@ -92,8 +97,13 @@ S3 (images) ◀─────────────────────�
 | `filter_quality` | TEXT[] | Quality filter |
 | `sort_order` | TEXT | `due_date`, `difficulty`, `lapses`, `random` |
 | `max_cards` | INT | Card limit |
-| `card_queue` | TEXT[] | Snapshot of card IDs |
-| `current_position` | INT | Progress pointer |
+| `card_queue` | TEXT[] | Card pool (matching card IDs) |
+| `cards_introduced` | TEXT[] | Cards seen at least once in this deck |
+| `new_per_session` | INT | New card limit per session (default 20) |
+| `review_per_session` | INT | Review card limit per session (default 200) |
+| `new_today` | INT | New cards introduced today |
+| `reviews_today` | INT | Reviews completed today |
+| `last_session_date` | DATE | Auto-resets daily counters |
 | `completed` | BOOLEAN | Done flag |
 
 ---
@@ -126,12 +136,12 @@ S3 (images) ◀─────────────────────�
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/api/decks` | List all decks with progress |
-| POST | `/api/decks` | Create new filtered deck |
+| GET | `/api/decks` | List all decks with progress (introduced/total) |
+| POST | `/api/decks` | Create new filtered deck (accepts `newPerSession`, `reviewPerSession`) |
 | DELETE | `/api/decks/[id]` | Delete deck |
-| GET | `/api/decks/[id]/next` | Next card from deck queue |
-| POST | `/api/decks/[id]/next` | Advance position (handles AGAIN re-queue, undo) |
-| POST | `/api/decks/[id]/reset` | Reset deck to position 0 |
+| GET | `/api/decks/[id]/next` | Next card via dynamic session queue (learning → review → new) |
+| POST | `/api/decks/[id]/next` | Update session counters and `cards_introduced` after rating |
+| POST | `/api/decks/[id]/reset` | Reset session counters. `?full=true` also clears `cards_introduced` |
 
 ---
 
@@ -145,7 +155,48 @@ S3 (images) ◀─────────────────────�
 | `/decks/new` | `src/app/decks/new/page.tsx` | Full-page filtered deck creation form |
 | `/decks/[id]` | `src/app/decks/[id]/page.tsx` | Deck-specific review session |
 
-> **Note:** Deck management (reset, delete, edit) now lives on the home page via a three-dot overflow menu (⋮) on each deck card. The old `/decks` list/management page is deprecated.
+> **Note:** Deck management (delete) lives on the home page via a three-dot overflow menu (⋮) on each deck card.
+
+---
+
+## Filtered Deck System
+
+### Session-Based Queue (Feb 2026 Overhaul)
+
+Filtered decks use a **dynamic session queue** instead of a static playlist. Cards are served in priority order:
+
+1. **Learning cards due now** — Cards in `learning`/`relearning` state with `due_date <= now`
+2. **Review cards due now** — Previously introduced cards in `review` state with `due_date <= now` (capped by `review_per_session`)
+3. **New cards** — Cards not yet in `cards_introduced` (capped by `new_per_session`)
+4. **All caught up** — No cards available; shows next due time
+
+### Session Limits
+
+Configurable at deck creation (like Anki):
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `new_per_session` | 20 | Max new cards introduced per day |
+| `review_per_session` | 200 | Max review cards per day |
+
+Daily counters (`new_today`, `reviews_today`) auto-reset when `last_session_date` changes.
+
+### Card Lifecycle in a Deck
+
+```
+card_queue (pool) ──▶ First seen ──▶ cards_introduced (tracked)
+                          │
+                          ▼
+                    AGAIN/HARD: stays in learning, cycles back in minutes
+                    GOOD/EASY: graduates to review, comes back in days
+```
+
+### Session UI
+
+- **Stats bar**: `New: 8/20 | Due: 35/100 | Learning: 3`
+- **Progress bar**: `145/200 introduced`
+- **Card type badge**: Shows whether current card is new/review/learning
+- **All caught up screen**: Next due time, remaining new count, session summary
 
 ---
 
@@ -186,6 +237,19 @@ NEW ──▶ LEARNING ──▶ REVIEW ◀──▶ RELEARNING
 | Hard (2) | `2` | Recalled with difficulty | Small stability increase (with penalty) |
 | Good (3) | `3` | Correct with hesitation | Standard increase |
 | Easy (4) | `4` | Perfect recall | Large increase (with bonus) |
+
+### Learning/Relearning Intervals
+
+Cards in learning or relearning state use custom intervals:
+
+| Rating | Interval | Behavior |
+|--------|----------|----------|
+| Again | 1 minute | Stays in learning queue |
+| Hard | 10 minutes | Stays in learning queue |
+| Good | FSRS-calculated (~3 days for new) | Graduates to review |
+| Easy | FSRS-calculated (~15 days for new) | Graduates to review |
+
+Only **Again** and **Hard** cycle back within a session. **Good** and **Easy** graduate the card to the review queue (due tomorrow or later).
 
 ### Key Formulas
 
@@ -231,26 +295,41 @@ NEW ──▶ LEARNING ──▶ REVIEW ◀──▶ RELEARNING
 
 ---
 
-## Known Issues
-
-> Tracked in detail in [PROGRESS.md](./PROGRESS.md). Roadmap and future plans in [ROADMAP.md](./ROADMAP.md).
-
-| Issue | Severity | Root Cause | Fix |
-|-------|----------|-----------|-----|
-| Review page auto-scrolls on reveal | High | `.review-shell` uses `min-height: 100dvh` — footer growth pushes content beyond viewport | Lock to `height: 100dvh`, prevent auto-scroll |
-| iPad occlusion image left-clipped | High | `overflow-x: hidden` on shell clips the `left: 50%; transform: translateX(-50%)` breakout hack | Replace breakout with margin-based centering |
-| Rating buttons too tall, wrong style | Medium | Dark fill background, accent line only on hover, ~50px tall | Transparent body + colored border, fill on press, ~24px tall |
-| Deck management split across two pages | Medium | `/decks` page duplicates home page deck list | Move actions to home page overflow menu, dedicated `/decks/new` for creation |
-
----
-
 ## Environment Variables
+
+### Next.js App (`.env.local` or Vercel)
 
 ```
 NEXT_PUBLIC_SUPABASE_URL     — Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY — Supabase anonymous key
 SUPABASE_SERVICE_KEY          — Supabase service role key (server-side only)
 ```
+
+### Pipelines (`pipelines/.env`)
+
+```
+OPENAI_API                   — OpenAI API key (GPT-4o for card generation)
+AWS_ACCESS_KEY_ID            — S3 credentials
+AWS_SECRET_ACCESS_KEY        — S3 credentials
+S3_BUCKET_NAME               — S3 bucket for card images
+S3_REGION                    — S3 region
+S3_PUBLIC_URL                — S3 public URL prefix
+SUPABASE_URL                 — Supabase project URL
+SUPABASE_SERVICE_KEY         — Supabase service role key
+SUPABASE_ACCESS_TOKEN        — Personal access token (for MCP server + Management API)
+```
+
+### Database Access
+
+Direct database connection via `psql` is **not available** — Supabase's direct host (`db.*.supabase.co`) resolves to IPv6 only, which has no route from the local network.
+
+Two working alternatives:
+
+1. **Supabase MCP Server** (primary) — Configured in `.mcp.json`, gives Claude Code direct database access for queries, migrations, and schema management. Uses the Management API with a personal access token.
+
+2. **Supabase Management API** (fallback) — `POST https://api.supabase.com/v1/projects/{ref}/database/query` with the access token. Used for running DDL and ad-hoc queries via `curl`.
+
+The REST API (`SUPABASE_URL/rest/v1/`) also works for data reads but cannot run DDL.
 
 ---
 
@@ -283,7 +362,52 @@ src/
 └── lib/
     ├── supabase.ts                 Client + types
     └── fsrs.ts                     FSRS-4.5 algorithm
+
+pipelines/
+├── shared/
+│   ├── models.py                   CardData dataclass
+│   ├── s3_storage.py               S3ImageStorage (upload, dedup, obfuscated keys)
+│   └── supabase_writer.py          SupabaseCardWriter (batch insert)
+├── kurts_notes/
+│   ├── run.py                      Entry point: python -m kurts_notes.run /path/to/folder
+│   ├── slide_processor.py          Slide extraction, OCR, AI classification, card generation
+│   └── README.md                   Pipeline docs + comprehensiveness notes
+├── archive/
+│   ├── legacy/                     Original srs_card_gen scripts
+│   └── planning_docs/              Original Obsidian planning notes
+├── pyproject.toml                  Python dependencies
+└── .gitignore                      Python-specific ignores
 ```
+
+---
+
+## Tag Convention
+
+Each card gets 2–3 tags:
+
+| Tag | Example | Source |
+|-----|---------|--------|
+| Topic | `cytology` | From pipeline `--topic` arg |
+| Subtopic | `cervical-cytology` | From slide-level classification |
+| Source | `source:kurts-notes` | From pipeline `--source` arg |
+
+LLM-generated content tags were removed (Feb 2026) — too granular and inconsistent for filtering. The tag system is kept extensible for future resources (textbooks, lectures, etc.).
+
+---
+
+## Migrations
+
+Migrations are in `migrations/` numbered sequentially:
+
+| Migration | Description |
+|-----------|-------------|
+| 001 | Initial schema (cards, reviews) |
+| 002 | Filtered decks |
+| 003 | Additional card fields |
+| 004 | Deck filters expansion |
+| 005 | Deck session tracking (`cards_introduced`, per-session limits, daily counters) |
+
+Migrations are run via the **Supabase Management API** or **SQL Editor** in the Supabase dashboard.
 
 ---
 

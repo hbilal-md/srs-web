@@ -254,15 +254,13 @@ export class FSRS {
     // Calculate interval
     let interval: number
     if (newState.state === State.LEARNING || newState.state === State.RELEARNING) {
-      // Short intervals for learning cards
       if (rating === Rating.AGAIN) {
         interval = 1 / 1440  // 1 minute in days
       } else if (rating === Rating.HARD) {
-        interval = 5 / 1440  // 5 minutes
-      } else if (rating === Rating.GOOD) {
         interval = 10 / 1440  // 10 minutes
-      } else {  // EASY
-        interval = 1  // 1 day, graduate immediately
+      } else {
+        // GOOD and EASY both graduate — use full FSRS interval
+        interval = this.nextInterval(newState.stability)
       }
     } else {
       interval = this.nextInterval(newState.stability)

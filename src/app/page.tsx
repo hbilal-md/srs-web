@@ -15,8 +15,9 @@ interface Deck {
   filter_quality: string[]
   sort_order: string
   totalCards: number
-  progress: number
-  progressPercent: number
+  newRemaining: number
+  dueRemaining: number
+  learningNow: number
   completed: boolean
 }
 
@@ -86,7 +87,7 @@ export default function HomePage() {
       await fetch(`/api/decks/${deckId}/reset`, { method: 'POST' })
       setDecks(decks.map(d =>
         d.deck_id === deckId
-          ? { ...d, progress: 0, progressPercent: 0, completed: false }
+          ? { ...d, newRemaining: 0, dueRemaining: 0, learningNow: 0, completed: false }
           : d
       ))
     } catch (err) {
@@ -243,20 +244,14 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Progress */}
-              <div className="mb-3">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-500">Progress</span>
-                  <span className="text-gray-400 font-medium">
-                    {deck.progress}/{deck.totalCards}
-                  </span>
-                </div>
-                <div className="deck-progress-bar">
-                  <div
-                    className="deck-progress-fill"
-                    style={{ width: `${deck.progressPercent}%` }}
-                  />
-                </div>
+              {/* Session Stats */}
+              <div className="flex items-center gap-3 text-xs mb-3">
+                <span className="text-blue-400">{deck.newRemaining} new</span>
+                <span className="text-green-400">{deck.dueRemaining} due</span>
+                {deck.learningNow > 0 && (
+                  <span className="text-orange-400">{deck.learningNow} learning</span>
+                )}
+                <span className="text-gray-500 ml-auto">{deck.totalCards} total</span>
               </div>
 
               {/* Tags & Filters */}

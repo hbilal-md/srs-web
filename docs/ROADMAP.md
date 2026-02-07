@@ -49,34 +49,42 @@ A shared system across all ecosystem apps, inspired by factory-style games (Fact
 
 ## SRS Features Roadmap
 
-### Near-Term (Current Sprint)
+### Completed (2026-02-07)
+
+- [x] Fix review page auto-scroll on reveal — `height: 100dvh`
+- [x] Fix iPad/all-device image centering — `max-width: 90vw; margin: 0 auto`
+- [x] Rating button redesign — transparent + colored border, fill on press
+- [x] Deck management overhaul — three-dot menu on home, `/decks/new`
+- [x] Pipeline reorganization — `srs_card_gen/` → `pipelines/` with shared utilities
+- [x] Kurt's Notes pipeline — 453 cards across 7 Cytology PDFs
+- [x] Tag simplification — topic + subtopic + source (2–3 per card)
+- [x] Obsidian note generation removed
+- [x] Filtered deck overhaul — dynamic session queue, per-session limits, daily counters
+- [x] FSRS interval tuning — AGAIN=1min, HARD=10min, GOOD/EASY=FSRS-calculated
+- [x] Database access — Supabase MCP server + Management API
+- [x] Migration 005 applied — session tracking columns on `filtered_decks`
+
+### Near-Term: Testing + New Pipelines
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Fix review page auto-scroll on reveal | High | `height: 100dvh` fix — usability blocker |
-| Fix iPad occlusion image clipping | High | Replace breakout centering hack — usability blocker |
-| Rating button redesign | Medium | Transparent + colored border, fill on press, half height |
-| Deck management overhaul | Medium | Three-dot menu on home, full-page `/decks/new`, deprecate `/decks` |
+| **Test filtered deck flow** | High | End-to-end testing of new session-based queue |
+| **New pipeline frameworks** | Medium | Textbook chapters, lecture notes, or other source types |
+| **Flagged card auditing** | Medium | Use DB access to pull flagged cards and improve pipeline |
+
+> **Priority shift:** Review UI and deck management are dialed in. Pipeline is producing cards. Next: battle-test the session queue, then expand pipelines and build the audit loop.
 
 ### Medium-Term
 
 | Feature | GitHub Issue | Notes |
 |---------|-------------|-------|
+| **Card Ingestion Dashboard** | #13, #5, #4, #3 | Frontend UI to upload PDFs, select pipeline, auto-generate cards |
 | **Review Heatmap** | #12 | GitHub-style contribution grid — daily review activity over months |
 | **Leech Detection** | #10 | Auto-flag cards with high lapse counts, action options (suspend, reset, edit) |
 | **Session Summaries** | — | Post-session stats: cards reviewed, accuracy, time spent, streaks, XP earned |
 | **Notifications** | — | Daily review reminders, streak-at-risk alerts (push/browser) |
 | **Thin API Client** | #7 | Replace inline `fetch()` calls with a typed client layer |
 | **Loading & Error States** | #8 | Proper error handling throughout (loading dots partially done) |
-
-### Medium-Term (Pipeline & Scale)
-
-| Feature | GitHub Issue | Notes |
-|---------|-------------|-------|
-| **Pipeline Reorganization** | — | Compartmentalize Python card-creation scripts in `pipelines/` with shared utilities |
-| **Card Ingestion Dashboard** | #13, #5, #4, #3 | Frontend UI to upload PDFs, select a processing pipeline, auto-generate cards |
-
-> **Priority shift:** Card volume is the bottleneck now that the review UI is dialing in. The ingestion dashboard is needed once 2-3 pipeline frameworks are working and battle-tested. Pipeline reorg comes first.
 
 ### Long-Term
 
@@ -113,23 +121,26 @@ All pipelines share:
 - `shared/supabase_writer.py` — SupabaseCardWriter (batch insert, card ID generation)
 - `shared/models.py` — CardData, TextSpan dataclasses
 
-### Kurt's Notes Pipeline (Framework #1 — Active)
+### Kurt's Notes Pipeline (Framework #1 — Active, 453 cards)
 
-The existing pipeline processes structured PDF slides into occlusion + text cards:
+The pipeline processes structured PDF slides into occlusion + text cards:
 
 ```
 PDF → Extract slides → OCR text spans → AI classify (skip low-value)
     → AI generate cards → Create blocked images → Upload to S3 → Insert to Supabase
-    → Generate Obsidian reference note + MoC
 ```
 
-**Key tech:** PyMuPDF (slide extraction + OCR), OpenAI (classification + card generation), Pillow (image blocking), boto3 (S3), supabase-py
+**Key tech:** PyMuPDF (slide extraction + OCR), OpenAI GPT-4o (classification + card generation), Pillow (image blocking), boto3 (S3), supabase-py
+
+**Tags:** topic + subtopic + source (2–3 per card). LLM content tags removed — too granular.
+
+**Comprehensiveness:** Documented in `pipelines/kurts_notes/README.md`. Known limitations: title-only slides skipped, some classification judgment calls, but image occlusion covers what text cards miss.
 
 ### Planned Pipelines
 
 | Pipeline | Source Material | Status | Approach |
 |----------|----------------|--------|----------|
-| Kurt's Notes | Structured PDF slides | **Active** — reorganized in `pipelines/kurts_notes/` |  OCR + AI slide analysis |
+| Kurt's Notes | Structured PDF slides | **Active** — `pipelines/kurts_notes/`, fixes in progress | OCR + AI slide analysis |
 | Textbook Chapters | Dense reference text | Planned | Text extraction + AI summarization → Q/A + cloze |
 | Lecture Notes | Slide-based content | Planned | Similar to Kurt's Notes but different slide layouts |
 | Journal Articles | Research papers | Planned | Abstract/methods/results extraction → targeted cards |
@@ -154,10 +165,12 @@ Next.js Frontend → API Route → Python Pipeline Service → Cards in Supabase
 | Area | Current | Future |
 |------|---------|--------|
 | Database | Supabase (free tier) | Supabase (paid) — shared across all ecosystem apps |
+| DB Access | Supabase MCP server + Management API | Same — psql blocked by IPv6 routing |
 | Hosting | Vercel (free tier) | Vercel (paid) — as traffic/build needs grow |
 | Media | AWS S3 | AWS S3 (same) |
 | Pipelines | Local Python scripts | Backend service (FastAPI on Railway/Fly.io) for ingestion dashboard |
 | CI/CD | Vercel auto-deploy from GitHub | Same |
+| AI Skills | Supabase best practices skill | Additional skills as needed |
 | Image Gen | — | AI tools (Nano Banana etc.) for gamification assets |
 
 Willing to invest in paid plans — personal tools > third-party subscriptions.
@@ -168,7 +181,7 @@ Willing to invest in paid plans — personal tools > third-party subscriptions.
 
 | Issue | Maps To |
 |-------|---------|
-| [#1](https://github.com/hbilal-md/srs-web/issues/1) UI improvements | Current sprint (near-term) |
+| [#1](https://github.com/hbilal-md/srs-web/issues/1) UI improvements | **Done** — merged PR #21 (2026-02-06) |
 | [#3](https://github.com/hbilal-md/srs-web/issues/3) Process more Kurt's notes | Card Ingestion Dashboard |
 | [#4](https://github.com/hbilal-md/srs-web/issues/4) JH Interesting Case bot | Card Ingestion Dashboard |
 | [#5](https://github.com/hbilal-md/srs-web/issues/5) CP Compendium parser | Card Ingestion Dashboard |
