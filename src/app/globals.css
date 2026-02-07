@@ -237,23 +237,6 @@ body {
 }
 
 /* ═══════════════════════════════════════
-   Progress Bar (Deck Cards)
-   ═══════════════════════════════════════ */
-.deck-progress-bar {
-  height: 4px;
-  background: var(--bg-accent);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.deck-progress-fill {
-  height: 100%;
-  background: var(--accent-green);
-  border-radius: 2px;
-  transition: width 0.4s ease;
-}
-
-/* ═══════════════════════════════════════
    Create Deck Page
    ═══════════════════════════════════════ */
 .create-deck-input {
@@ -577,20 +560,6 @@ body {
   object-fit: contain;
   border-radius: 8px;
   flex-shrink: 0;
-}
-
-/* Progress bar */
-.progress-bar {
-  height: 4px;
-  background: var(--bg-accent);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--accent-green);
-  transition: width 0.3s ease;
 }
 
 /* Scrollbar styling */

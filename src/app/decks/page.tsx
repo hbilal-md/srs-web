@@ -14,11 +14,9 @@ interface Deck {
   filter_quality: string[]
   sort_order: string
   totalCards: number
-  introduced: number
-  introPercent: number
-  // Legacy
-  progress: number
-  progressPercent: number
+  newRemaining: number
+  dueRemaining: number
+  learningNow: number
   completed: boolean
 }
 
@@ -308,8 +306,10 @@ export default function DecksPage() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-medium text-lg">{deck.name}</h3>
-                  <div className="text-sm text-gray-400">
-                    {deck.introduced}/{deck.totalCards} introduced
+                  <div className="flex gap-3 text-sm text-gray-400">
+                    <span className="text-blue-400">{deck.newRemaining ?? 0} new</span>
+                    <span className="text-green-400">{deck.dueRemaining ?? 0} due</span>
+                    <span>{deck.totalCards} total</span>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -328,12 +328,7 @@ export default function DecksPage() {
                 </div>
               </div>
 
-              <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${deck.introPercent || 0}%` }}
-                />
-              </div>
+              {/* Stats row replaces progress bar */}
 
               {/* Filter tags display */}
               {(

@@ -12,10 +12,10 @@ export async function GET() {
   try {
     const supabase = createServiceClient()
 
-    // Get topics, subtopics, and quality in one query
+    // Get topics, subtopics, quality, state, and due_date for stats
     const { data: cardData, error: cardError } = await supabase
       .from('cards')
-      .select('topic, subtopic, quality')
+      .select('topic, subtopic, quality, state, due_date')
 
     if (cardError) {
       console.error('Error fetching card data:', cardError)
@@ -48,6 +48,21 @@ export async function GET() {
       topicTree[topic].sort()
     }
 
+    // Build per-subtopic stats
+    const now = new Date().toISOString()
+    const subtopicStats: Record<string, { total: number; new: number; due: number; learning: number }> = {}
+    for (const row of cardData || []) {
+      if (!row.subtopic) continue
+      if (!subtopicStats[row.subtopic]) {
+        subtopicStats[row.subtopic] = { total: 0, new: 0, due: 0, learning: 0 }
+      }
+      const s = subtopicStats[row.subtopic]
+      s.total++
+      if (row.state === 'new') s.new++
+      else if (row.state === 'review' && row.due_date && row.due_date <= now) s.due++
+      else if (row.state === 'learning' || row.state === 'relearning') s.learning++
+    }
+
     // Extract flat lists for backwards compatibility
     const topics = Object.keys(topicTree).sort()
     const subtopics = Array.from(
@@ -64,6 +79,7 @@ export async function GET() {
 
     return NextResponse.json({
       topicTree,
+      subtopicStats,
       topics,
       subtopics,
       tags,

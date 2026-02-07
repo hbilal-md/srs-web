@@ -26,24 +26,79 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Add progress info to each deck
-    const decksWithProgress = decks?.map(deck => {
-      const totalCards = deck.card_queue?.length || 0
-      const introduced = deck.cards_introduced?.length || 0
+    // Collect all unique card IDs across all decks for batch lookup
+    const allCardIds = new Set<string>()
+    for (const deck of decks || []) {
+      for (const id of deck.card_queue || []) {
+        allCardIds.add(id)
+      }
+    }
+
+    // Batch-fetch card states and due dates
+    const cardStateMap = new Map<string, { state: string; due_date: string | null }>()
+    if (allCardIds.size > 0) {
+      const { data: cardData } = await supabase
+        .from('cards')
+        .select('card_id, state, due_date')
+        .in('card_id', Array.from(allCardIds))
+
+      for (const card of cardData || []) {
+        cardStateMap.set(card.card_id, { state: card.state, due_date: card.due_date })
+      }
+    }
+
+    const now = new Date().toISOString()
+    const today = now.slice(0, 10)
+
+    // Add session stats to each deck
+    const decksWithStats = (decks || []).map(deck => {
+      const cardPool: string[] = deck.card_queue || []
+      const totalCards = cardPool.length
+      const introducedSet = new Set<string>(deck.cards_introduced || [])
+
+      // Reset daily counters if day changed
+      const newToday = deck.last_session_date === today ? (deck.new_today || 0) : 0
+      const reviewsToday = deck.last_session_date === today ? (deck.reviews_today || 0) : 0
+      const newPerSession: number = deck.new_per_session || 20
+      const reviewPerSession: number = deck.review_per_session || 200
+
+      let dueRemaining = 0
+      let learningNow = 0
+      let actualNewAvailable = 0
+
+      for (const id of cardPool) {
+        const card = cardStateMap.get(id)
+        if (!card) continue
+        if ((card.state === 'learning' || card.state === 'relearning') && card.due_date && card.due_date <= now) {
+          learningNow++
+        } else if (card.state === 'review' && introducedSet.has(id) && card.due_date && card.due_date <= now) {
+          dueRemaining++
+        } else if (!introducedSet.has(id) && card.state !== 'suspended') {
+          actualNewAvailable++
+        }
+      }
+
+      const newRemaining = Math.min(Math.max(0, newPerSession - newToday), actualNewAvailable)
+
       return {
-        ...deck,
+        deck_id: deck.deck_id,
+        name: deck.name,
+        filter_topics: deck.filter_topics,
+        filter_subtopics: deck.filter_subtopics,
+        filter_tags: deck.filter_tags,
+        filter_states: deck.filter_states,
+        filter_importance: deck.filter_importance,
+        filter_quality: deck.filter_quality,
+        sort_order: deck.sort_order,
+        completed: deck.completed,
         totalCards,
-        introduced,
-        introPercent: totalCards ? Math.round((introduced / totalCards) * 100) : 0,
-        // Legacy
-        progress: deck.current_position,
-        progressPercent: deck.card_queue?.length
-          ? Math.round((deck.current_position / deck.card_queue.length) * 100)
-          : 0,
+        newRemaining,
+        dueRemaining,
+        learningNow,
       }
     })
 
-    return NextResponse.json({ decks: decksWithProgress || [] })
+    return NextResponse.json({ decks: decksWithStats })
   } catch (err) {
     console.error('Unexpected error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

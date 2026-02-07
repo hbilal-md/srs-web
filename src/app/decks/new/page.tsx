@@ -4,8 +4,16 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+interface SubtopicStats {
+  total: number
+  new: number
+  due: number
+  learning: number
+}
+
 interface FilterOptions {
   topicTree: Record<string, string[]>
+  subtopicStats: Record<string, SubtopicStats>
   topics: string[]
   subtopics: string[]
   tags: string[]
@@ -18,6 +26,7 @@ export default function NewDeckPage() {
   const router = useRouter()
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     topicTree: {},
+    subtopicStats: {},
     topics: [],
     subtopics: [],
     tags: [],
@@ -69,6 +78,7 @@ export default function NewDeckPage() {
         const data = await res.json()
         setFilterOptions({
           topicTree: data.topicTree || {},
+          subtopicStats: data.subtopicStats || {},
           topics: data.topics || [],
           subtopics: data.subtopics || [],
           tags: data.tags || [],
@@ -258,28 +268,49 @@ export default function NewDeckPage() {
                         className="w-4 h-4 rounded accent-[#8AC926]"
                       />
                       <span className="font-medium text-gray-200">{topic}</span>
-                      <span className="text-xs text-gray-500">
-                        ({subtopics.length})
-                      </span>
+                      {(() => {
+                        const agg = subtopics.reduce((acc, st) => {
+                          const s = filterOptions.subtopicStats[st]
+                          if (s) { acc.total += s.total; acc.new += s.new; acc.due += s.due; acc.learning += s.learning }
+                          return acc
+                        }, { total: 0, new: 0, due: 0, learning: 0 })
+                        return (
+                          <span className="text-xs text-gray-500 ml-auto flex items-center gap-1.5">
+                            <span>{agg.total}</span>
+                            {agg.new > 0 && <span className="text-blue-400">{agg.new} new</span>}
+                            {agg.due > 0 && <span className="text-green-400">{agg.due} due</span>}
+                          </span>
+                        )
+                      })()}
                     </label>
                   </div>
 
                   {expandedTopics.includes(topic) && subtopics.length > 0 && (
                     <div className="create-deck-subtopics">
-                      {subtopics.map(subtopic => (
-                        <label
-                          key={subtopic}
-                          className="flex items-center gap-2 py-1.5 cursor-pointer select-none text-gray-300 hover:text-white"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSubtopics.includes(subtopic)}
-                            onChange={() => toggleSubtopicSelection(topic, subtopic)}
-                            className="w-4 h-4 rounded accent-[#8AC926]"
-                          />
-                          <span className="text-sm">{subtopic}</span>
-                        </label>
-                      ))}
+                      {subtopics.map(subtopic => {
+                        const stats = filterOptions.subtopicStats[subtopic]
+                        return (
+                          <label
+                            key={subtopic}
+                            className="flex items-center gap-2 py-1.5 cursor-pointer select-none text-gray-300 hover:text-white"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSubtopics.includes(subtopic)}
+                              onChange={() => toggleSubtopicSelection(topic, subtopic)}
+                              className="w-4 h-4 rounded accent-[#8AC926]"
+                            />
+                            <span className="text-sm flex-1">{subtopic}</span>
+                            {stats && (
+                              <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                                <span>{stats.total}</span>
+                                {stats.new > 0 && <span className="text-blue-400">{stats.new} new</span>}
+                                {stats.due > 0 && <span className="text-green-400">{stats.due} due</span>}
+                              </span>
+                            )}
+                          </label>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

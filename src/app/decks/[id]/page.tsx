@@ -13,11 +13,8 @@ interface DeckInfo {
   deck_id: string
   name: string
   totalCards: number
-  introduced: number
-  newToday: number
-  newLimit: number
-  reviewsToday: number
-  reviewLimit: number
+  newRemaining: number
+  dueRemaining: number
   learningNow: number
 }
 
@@ -27,7 +24,6 @@ interface NextCardResponse {
   intervals?: Record<Rating, number>
   deck?: DeckInfo
   nextDueAt?: string | null
-  remainingNew?: number
 }
 
 export default function DeckReviewPage() {
@@ -47,7 +43,6 @@ export default function DeckReviewPage() {
   const [lastCardType, setLastCardType] = useState<string | null>(null)
   const [lastCardId, setLastCardId] = useState<string | null>(null)
   const [nextDueAt, setNextDueAt] = useState<string | null>(null)
-  const [remainingNew, setRemainingNew] = useState<number>(0)
 
   // Fetch next card from deck
   const fetchNextCard = useCallback(async () => {
@@ -68,7 +63,6 @@ export default function DeckReviewPage() {
       setIntervals(data.intervals || null)
       setDeck(data.deck || null)
       setNextDueAt(data.nextDueAt || null)
-      setRemainingNew(data.remainingNew || 0)
 
       if (data.card) {
         setReviewStartTime(Date.now())
@@ -275,9 +269,7 @@ export default function DeckReviewPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-4xl mb-4">
-            {deck.introduced >= deck.totalCards ? '\u2713' : '\u23F3'}
-          </div>
+          <div className="text-4xl mb-4">{'\u23F3'}</div>
           <h1 className="text-2xl font-bold mb-2">All caught up</h1>
           <p className="text-xl text-gray-300 mb-1">{deck.name}</p>
 
@@ -289,23 +281,24 @@ export default function DeckReviewPage() {
             </p>
           )}
 
-          {!minutesUntilDue && remainingNew > 0 && (
+          {!minutesUntilDue && deck.newRemaining > 0 && (
             <p className="text-gray-400 mb-4">
-              {remainingNew} new cards remaining for future sessions
+              {deck.newRemaining} new cards remaining for future sessions
             </p>
           )}
 
-          {!minutesUntilDue && remainingNew === 0 && (
+          {!minutesUntilDue && deck.newRemaining === 0 && (
             <p className="text-gray-400 mb-4">
               Nothing due right now
             </p>
           )}
 
           {/* Session summary */}
-          <div className="flex gap-6 justify-center text-sm text-gray-400 mb-6">
-            <span>New today: {deck.newToday}</span>
-            <span>Reviews today: {deck.reviewsToday}</span>
-            <span>Introduced: {deck.introduced}/{deck.totalCards}</span>
+          <div className="flex gap-4 justify-center text-sm text-gray-400 mb-6">
+            <span className="text-blue-400">{deck.newRemaining} new</span>
+            <span className="text-green-400">{deck.dueRemaining} due</span>
+            {deck.learningNow > 0 && <span className="text-orange-400">{deck.learningNow} learning</span>}
+            <span>{deck.totalCards} total</span>
           </div>
 
           <div className="flex gap-4 justify-center">
@@ -350,34 +343,21 @@ export default function DeckReviewPage() {
 
       {/* Session stats */}
       {deck && (
-        <div className="mb-3">
-          <div className="flex justify-between text-sm text-gray-400 mb-1">
-            <div className="flex gap-4">
-              <span className="text-blue-400">New: {deck.newToday}/{deck.newLimit}</span>
-              <span className="text-green-400">Due: {deck.reviewsToday}/{deck.reviewLimit}</span>
-              {deck.learningNow > 0 && (
-                <span className="text-orange-400">Learning: {deck.learningNow}</span>
-              )}
-            </div>
-            <span>{deck.introduced}/{deck.totalCards} introduced</span>
-          </div>
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${Math.round((deck.introduced / deck.totalCards) * 100)}%` }}
-            />
-          </div>
-          {/* Card type badge */}
+        <div className="flex items-center justify-center gap-4 text-sm mb-3">
+          <span className="text-blue-400">{deck.newRemaining} new</span>
+          <span className="text-green-400">{deck.dueRemaining} due</span>
+          {deck.learningNow > 0 && (
+            <span className="text-orange-400">{deck.learningNow} learning</span>
+          )}
+          <span className="text-gray-500">{deck.totalCards} total</span>
           {cardType && (
-            <div className="mt-1">
-              <span className={`text-xs px-2 py-0.5 rounded ${
-                cardType === 'new' ? 'bg-blue-500/20 text-blue-400' :
-                cardType === 'review' ? 'bg-green-500/20 text-green-400' :
-                'bg-orange-500/20 text-orange-400'
-              }`}>
-                {cardType}
-              </span>
-            </div>
+            <span className={`text-xs px-2 py-0.5 rounded ${
+              cardType === 'new' ? 'bg-blue-500/20 text-blue-400' :
+              cardType === 'review' ? 'bg-green-500/20 text-green-400' :
+              'bg-orange-500/20 text-orange-400'
+            }`}>
+              {cardType}
+            </span>
           )}
         </div>
       )}

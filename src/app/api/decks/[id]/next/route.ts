@@ -33,9 +33,10 @@ export async function GET(
 
     const cardPool: string[] = deck.card_queue || []
     if (cardPool.length === 0) {
+      const emptyCounts = { learningNow: 0, dueRemaining: 0, newAvailable: 0 }
       return NextResponse.json({
         card: null,
-        deck: buildDeckInfo(deck, 0),
+        deck: buildDeckInfo(deck, emptyCounts, 0, deck.new_per_session || 20),
         nextDueAt: null,
       })
     }
@@ -59,6 +60,10 @@ export async function GET(
     const reviewPerSession: number = deck.review_per_session || 200
     const now = new Date().toISOString()
 
+    // Get counts for the deck info (shared across all branches)
+    const counts = await getDeckCounts(supabase, cardPool, cardsIntroducedSet, now)
+    const deckInfo = buildDeckInfo(deck, counts, newToday, newPerSession)
+
     // 1. Learning cards due now
     const { data: learningCards } = await supabase
       .from('cards')
@@ -73,13 +78,12 @@ export async function GET(
       const card = learningCards[0]
       const fsrs = new FSRS()
       const intervals = fsrs.previewRatings(dbCardToState(card))
-      const learningCount = await countLearningCards(supabase, cardPool, now)
 
       return NextResponse.json({
         card,
         cardType: 'learning',
         intervals,
-        deck: buildDeckInfo(deck, learningCount, newToday, newPerSession, reviewsToday, reviewPerSession),
+        deck: deckInfo,
         nextDueAt: null,
       })
     }
@@ -102,13 +106,12 @@ export async function GET(
           const card = reviewCards[0]
           const fsrs = new FSRS()
           const intervals = fsrs.previewRatings(dbCardToState(card))
-          const learningCount = await countLearningCards(supabase, cardPool, now)
 
           return NextResponse.json({
             card,
             cardType: 'review',
             intervals,
-            deck: buildDeckInfo(deck, learningCount, newToday, newPerSession, reviewsToday, reviewPerSession),
+            deck: deckInfo,
             nextDueAt: null,
           })
         }
@@ -132,13 +135,12 @@ export async function GET(
           const card = newCards[0]
           const fsrs = new FSRS()
           const intervals = fsrs.previewRatings(dbCardToState(card))
-          const learningCount = await countLearningCards(supabase, cardPool, now)
 
           return NextResponse.json({
             card,
             cardType: 'new',
             intervals,
-            deck: buildDeckInfo(deck, learningCount, newToday, newPerSession, reviewsToday, reviewPerSession),
+            deck: deckInfo,
             nextDueAt: null,
           })
         }
@@ -156,16 +158,11 @@ export async function GET(
       .limit(1)
 
     const nextDueAt = upcomingLearning?.[0]?.due_date || null
-    const learningCount = 0
-
-    // Count remaining new cards
-    const remainingNew = cardPool.filter(id => !cardsIntroducedSet.has(id)).length
 
     return NextResponse.json({
       card: null,
-      deck: buildDeckInfo(deck, learningCount, newToday, newPerSession, reviewsToday, reviewPerSession),
+      deck: deckInfo,
       nextDueAt,
-      remainingNew,
     })
   } catch (err) {
     console.error('Unexpected error:', err)
@@ -255,43 +252,51 @@ export async function POST(
   }
 }
 
-// Helper: count learning cards due now in the pool
-async function countLearningCards(
+// Helper: get session-aware counts for the deck
+async function getDeckCounts(
   supabase: ReturnType<typeof createServiceClient>,
   cardPool: string[],
+  cardsIntroducedSet: Set<string>,
   now: string
-): Promise<number> {
-  const { count } = await supabase
+): Promise<{ learningNow: number; dueRemaining: number; newAvailable: number }> {
+  // Batch-fetch states for all cards in pool
+  const { data: cards } = await supabase
     .from('cards')
-    .select('*', { count: 'exact', head: true })
+    .select('card_id, state, due_date')
     .in('card_id', cardPool)
-    .in('state', ['learning', 'relearning'])
-    .lte('due_date', now)
 
-  return count || 0
+  let learningNow = 0
+  let dueRemaining = 0
+  let newAvailable = 0
+
+  for (const card of cards || []) {
+    if ((card.state === 'learning' || card.state === 'relearning') && card.due_date && card.due_date <= now) {
+      learningNow++
+    } else if (card.state === 'review' && cardsIntroducedSet.has(card.card_id) && card.due_date && card.due_date <= now) {
+      dueRemaining++
+    } else if (!cardsIntroducedSet.has(card.card_id) && card.state !== 'suspended') {
+      newAvailable++
+    }
+  }
+
+  return { learningNow, dueRemaining, newAvailable }
 }
 
 // Helper: build deck info for response
 function buildDeckInfo(
   deck: Record<string, unknown>,
-  learningCount: number,
-  newToday?: number,
-  newLimit?: number,
-  reviewsToday?: number,
-  reviewLimit?: number,
+  counts: { learningNow: number; dueRemaining: number; newAvailable: number },
+  newToday: number,
+  newLimit: number,
 ) {
   const cardPool = (deck.card_queue as string[]) || []
-  const introduced = (deck.cards_introduced as string[]) || []
 
   return {
     deck_id: deck.deck_id,
     name: deck.name,
     totalCards: cardPool.length,
-    introduced: introduced.length,
-    newToday: newToday ?? deck.new_today ?? 0,
-    newLimit: newLimit ?? deck.new_per_session ?? 20,
-    reviewsToday: reviewsToday ?? deck.reviews_today ?? 0,
-    reviewLimit: reviewLimit ?? deck.review_per_session ?? 200,
-    learningNow: learningCount,
+    newRemaining: Math.min(Math.max(0, newLimit - newToday), counts.newAvailable),
+    dueRemaining: counts.dueRemaining,
+    learningNow: counts.learningNow,
   }
 }
