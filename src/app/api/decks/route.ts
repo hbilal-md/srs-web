@@ -27,14 +27,21 @@ export async function GET() {
     }
 
     // Add progress info to each deck
-    const decksWithProgress = decks?.map(deck => ({
-      ...deck,
-      totalCards: deck.card_queue?.length || 0,
-      progress: deck.current_position,
-      progressPercent: deck.card_queue?.length
-        ? Math.round((deck.current_position / deck.card_queue.length) * 100)
-        : 0,
-    }))
+    const decksWithProgress = decks?.map(deck => {
+      const totalCards = deck.card_queue?.length || 0
+      const introduced = deck.cards_introduced?.length || 0
+      return {
+        ...deck,
+        totalCards,
+        introduced,
+        introPercent: totalCards ? Math.round((introduced / totalCards) * 100) : 0,
+        // Legacy
+        progress: deck.current_position,
+        progressPercent: deck.card_queue?.length
+          ? Math.round((deck.current_position / deck.card_queue.length) * 100)
+          : 0,
+      }
+    })
 
     return NextResponse.json({ decks: decksWithProgress || [] })
   } catch (err) {
@@ -62,6 +69,8 @@ export async function POST(request: Request) {
       filterDifficultyMax,
       sortOrder = 'due_date',
       maxCards,
+      newPerSession = 20,
+      reviewPerSession = 200,
     } = body
 
     if (!name) {
@@ -176,6 +185,12 @@ export async function POST(request: Request) {
         card_queue: cardQueue,
         current_position: 0,
         completed: false,
+        cards_introduced: [],
+        new_per_session: newPerSession,
+        review_per_session: reviewPerSession,
+        new_today: 0,
+        reviews_today: 0,
+        last_session_date: null,
       })
       .select()
       .single()

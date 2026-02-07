@@ -13,16 +13,21 @@ interface DeckInfo {
   deck_id: string
   name: string
   totalCards: number
-  progress: number
-  progressPercent: number
-  completed: boolean
+  introduced: number
+  newToday: number
+  newLimit: number
+  reviewsToday: number
+  reviewLimit: number
+  learningNow: number
 }
 
 interface NextCardResponse {
   card: CardType | null
+  cardType?: 'new' | 'review' | 'learning'
   intervals?: Record<Rating, number>
   deck?: DeckInfo
-  message?: string
+  nextDueAt?: string | null
+  remainingNew?: number
 }
 
 export default function DeckReviewPage() {
@@ -30,6 +35,7 @@ export default function DeckReviewPage() {
   const deckId = params.id as string
 
   const [card, setCard] = useState<CardType | null>(null)
+  const [cardType, setCardType] = useState<'new' | 'review' | 'learning' | null>(null)
   const [intervals, setIntervals] = useState<Record<Rating, number> | null>(null)
   const [deck, setDeck] = useState<DeckInfo | null>(null)
   const [isRevealed, setIsRevealed] = useState(false)
@@ -38,6 +44,10 @@ export default function DeckReviewPage() {
   const [reviewStartTime, setReviewStartTime] = useState<number | null>(null)
   const [lastReviewId, setLastReviewId] = useState<string | null>(null)
   const [lastRating, setLastRating] = useState<number | null>(null)
+  const [lastCardType, setLastCardType] = useState<string | null>(null)
+  const [lastCardId, setLastCardId] = useState<string | null>(null)
+  const [nextDueAt, setNextDueAt] = useState<string | null>(null)
+  const [remainingNew, setRemainingNew] = useState<number>(0)
 
   // Fetch next card from deck
   const fetchNextCard = useCallback(async () => {
@@ -46,14 +56,19 @@ export default function DeckReviewPage() {
     setReviewStartTime(null)
     setLastReviewId(null)
     setLastRating(null)
+    setLastCardType(null)
+    setLastCardId(null)
 
     try {
       const res = await fetch(`/api/decks/${deckId}/next`)
       const data: NextCardResponse = await res.json()
 
       setCard(data.card)
+      setCardType(data.cardType || null)
       setIntervals(data.intervals || null)
       setDeck(data.deck || null)
+      setNextDueAt(data.nextDueAt || null)
+      setRemainingNew(data.remainingNew || 0)
 
       if (data.card) {
         setReviewStartTime(Date.now())
@@ -99,18 +114,25 @@ export default function DeckReviewPage() {
       const data = await res.json()
       const reviewId = data.reviewId
 
-      // Advance deck position (pass rating so AGAIN cards get re-queued)
+      // Update deck session counters
       await fetch(`/api/decks/${deckId}/next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating }),
+        body: JSON.stringify({ cardType, cardId: card.card_id }),
       })
+
+      // Store for undo before fetching next
+      const prevCardType = cardType
+      const prevCardId = card.card_id
 
       // Fetch next card
       await fetchNextCard()
-      // Store review info for undo (after fetchNextCard clears it, set again)
+
+      // Restore undo info (fetchNextCard clears it)
       setLastReviewId(reviewId)
       setLastRating(rating)
+      setLastCardType(prevCardType)
+      setLastCardId(prevCardId)
     } catch (err) {
       console.error('Error submitting review:', err)
     } finally {
@@ -126,10 +148,6 @@ export default function DeckReviewPage() {
 
     try {
       await fetch(`/api/cards/${card.card_id}/suspend`, {
-        method: 'POST',
-      })
-      // Advance deck position
-      await fetch(`/api/decks/${deckId}/next`, {
         method: 'POST',
       })
       await fetchNextCard()
@@ -155,29 +173,27 @@ export default function DeckReviewPage() {
       })
       const data = await res.json()
 
-      // Roll back deck position
+      // Roll back deck session counters
       await fetch(`/api/decks/${deckId}/next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ undo: true, lastRating }),
+        body: JSON.stringify({ undo: true, cardType: lastCardType, cardId: lastCardId }),
       })
 
       if (data.success && data.card) {
         setCard(data.card)
+        setCardType(lastCardType as 'new' | 'review' | 'learning' | null)
         setIntervals(data.intervals || null)
         setIsRevealed(false)
         setLastReviewId(null)
         setLastRating(null)
+        setLastCardType(null)
+        setLastCardId(null)
         setReviewStartTime(Date.now())
-        // Update deck progress
-        if (deck) {
-          setDeck({
-            ...deck,
-            progress: Math.max(0, deck.progress - 1),
-            progressPercent: Math.max(0, Math.round(((deck.progress - 1) / deck.totalCards) * 100)),
-            completed: false,
-          })
-        }
+        // Refresh deck info
+        const deckRes = await fetch(`/api/decks/${deckId}/next`)
+        const deckData = await deckRes.json()
+        setDeck(deckData.deck || deck)
       }
     } catch (err) {
       console.error('Error undoing review:', err)
@@ -249,16 +265,48 @@ export default function DeckReviewPage() {
     )
   }
 
-  // Deck completed
+  // All caught up / session done
   if (!card && deck) {
+    const nextDueDate = nextDueAt ? new Date(nextDueAt) : null
+    const minutesUntilDue = nextDueDate
+      ? Math.max(1, Math.round((nextDueDate.getTime() - Date.now()) / 60000))
+      : null
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">🎉 Deck Complete!</h1>
-          <p className="text-xl text-gray-300 mb-2">{deck.name}</p>
-          <p className="text-gray-400 mb-6">
-            You reviewed all {deck.totalCards} cards.
-          </p>
+          <div className="text-4xl mb-4">
+            {deck.introduced >= deck.totalCards ? '\u2713' : '\u23F3'}
+          </div>
+          <h1 className="text-2xl font-bold mb-2">All caught up</h1>
+          <p className="text-xl text-gray-300 mb-1">{deck.name}</p>
+
+          {minutesUntilDue && (
+            <p className="text-gray-400 mb-4">
+              Next card due in {minutesUntilDue < 60
+                ? `${minutesUntilDue} min`
+                : `${Math.round(minutesUntilDue / 60)} hr`}
+            </p>
+          )}
+
+          {!minutesUntilDue && remainingNew > 0 && (
+            <p className="text-gray-400 mb-4">
+              {remainingNew} new cards remaining for future sessions
+            </p>
+          )}
+
+          {!minutesUntilDue && remainingNew === 0 && (
+            <p className="text-gray-400 mb-4">
+              Nothing due right now
+            </p>
+          )}
+
+          {/* Session summary */}
+          <div className="flex gap-6 justify-center text-sm text-gray-400 mb-6">
+            <span>New today: {deck.newToday}</span>
+            <span>Reviews today: {deck.reviewsToday}</span>
+            <span>Introduced: {deck.introduced}/{deck.totalCards}</span>
+          </div>
 
           <div className="flex gap-4 justify-center">
             <Link
@@ -267,15 +315,6 @@ export default function DeckReviewPage() {
             >
               Back Home
             </Link>
-            <button
-              onClick={async () => {
-                await fetch(`/api/decks/${deckId}/reset`, { method: 'POST' })
-                fetchNextCard()
-              }}
-              className="px-6 py-3 bg-accent-green hover:opacity-90 rounded-lg text-gray-900 font-medium"
-            >
-              Review Again
-            </button>
           </div>
         </div>
       </div>
@@ -300,7 +339,7 @@ export default function DeckReviewPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <Link href="/" className="text-gray-400 hover:text-white text-sm">
-          ← Home
+          &larr; Home
         </Link>
         {deck && (
           <div className="text-sm text-gray-400">
@@ -309,19 +348,37 @@ export default function DeckReviewPage() {
         )}
       </div>
 
-      {/* Progress */}
+      {/* Session stats */}
       {deck && (
         <div className="mb-3">
           <div className="flex justify-between text-sm text-gray-400 mb-1">
-            <span>{deck.progress + 1} / {deck.totalCards}</span>
-            <span>{deck.progressPercent}%</span>
+            <div className="flex gap-4">
+              <span className="text-blue-400">New: {deck.newToday}/{deck.newLimit}</span>
+              <span className="text-green-400">Due: {deck.reviewsToday}/{deck.reviewLimit}</span>
+              {deck.learningNow > 0 && (
+                <span className="text-orange-400">Learning: {deck.learningNow}</span>
+              )}
+            </div>
+            <span>{deck.introduced}/{deck.totalCards} introduced</span>
           </div>
           <div className="progress-bar">
             <div
               className="progress-fill"
-              style={{ width: `${deck.progressPercent}%` }}
+              style={{ width: `${Math.round((deck.introduced / deck.totalCards) * 100)}%` }}
             />
           </div>
+          {/* Card type badge */}
+          {cardType && (
+            <div className="mt-1">
+              <span className={`text-xs px-2 py-0.5 rounded ${
+                cardType === 'new' ? 'bg-blue-500/20 text-blue-400' :
+                cardType === 'review' ? 'bg-green-500/20 text-green-400' :
+                'bg-orange-500/20 text-orange-400'
+              }`}>
+                {cardType}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -356,12 +413,12 @@ export default function DeckReviewPage() {
         {!isRevealed ? (
           <span>
             <span className="kbd">Space</span> to reveal
-            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
+            {lastReviewId && <> &bull; <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
           </span>
         ) : (
           <span>
             <span className="kbd">1-4</span> to rate
-            {lastReviewId && <> • <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
+            {lastReviewId && <> &bull; <span className="kbd cursor-pointer hover:text-gray-300" onClick={handleUndo}>Z undo</span></>}
           </span>
         )}
       </div>

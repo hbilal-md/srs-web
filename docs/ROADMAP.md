@@ -49,23 +49,30 @@ A shared system across all ecosystem apps, inspired by factory-style games (Fact
 
 ## SRS Features Roadmap
 
-### Completed (2026-02-06)
+### Completed (2026-02-07)
 
 - [x] Fix review page auto-scroll on reveal — `height: 100dvh`
 - [x] Fix iPad/all-device image centering — `max-width: 90vw; margin: 0 auto`
 - [x] Rating button redesign — transparent + colored border, fill on press
 - [x] Deck management overhaul — three-dot menu on home, `/decks/new`
 - [x] Pipeline reorganization — `srs_card_gen/` → `pipelines/` with shared utilities
+- [x] Kurt's Notes pipeline — 453 cards across 7 Cytology PDFs
+- [x] Tag simplification — topic + subtopic + source (2–3 per card)
+- [x] Obsidian note generation removed
+- [x] Filtered deck overhaul — dynamic session queue, per-session limits, daily counters
+- [x] FSRS interval tuning — AGAIN=1min, HARD=10min, GOOD/EASY=FSRS-calculated
+- [x] Database access — Supabase MCP server + Management API
+- [x] Migration 005 applied — session tracking columns on `filtered_decks`
 
-### Near-Term (Current Sprint): Card Ingestion Pipelines
+### Near-Term: Testing + New Pipelines
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| **Kurt's Notes pipeline fixes** | High | User has specific fixes needed in the existing framework |
-| **Test pipeline end-to-end** | High | Verify `pipelines/` structure works with real PDFs |
+| **Test filtered deck flow** | High | End-to-end testing of new session-based queue |
 | **New pipeline frameworks** | Medium | Textbook chapters, lecture notes, or other source types |
+| **Flagged card auditing** | Medium | Use DB access to pull flagged cards and improve pipeline |
 
-> **Priority shift:** Review UI is dialed in. Card volume is now the bottleneck. Focus is on getting pipelines working and battle-tested, then building the ingestion dashboard.
+> **Priority shift:** Review UI and deck management are dialed in. Pipeline is producing cards. Next: battle-test the session queue, then expand pipelines and build the audit loop.
 
 ### Medium-Term
 
@@ -114,17 +121,20 @@ All pipelines share:
 - `shared/supabase_writer.py` — SupabaseCardWriter (batch insert, card ID generation)
 - `shared/models.py` — CardData, TextSpan dataclasses
 
-### Kurt's Notes Pipeline (Framework #1 — Active)
+### Kurt's Notes Pipeline (Framework #1 — Active, 453 cards)
 
-The existing pipeline processes structured PDF slides into occlusion + text cards:
+The pipeline processes structured PDF slides into occlusion + text cards:
 
 ```
 PDF → Extract slides → OCR text spans → AI classify (skip low-value)
     → AI generate cards → Create blocked images → Upload to S3 → Insert to Supabase
-    → Generate Obsidian reference note + MoC
 ```
 
-**Key tech:** PyMuPDF (slide extraction + OCR), OpenAI (classification + card generation), Pillow (image blocking), boto3 (S3), supabase-py
+**Key tech:** PyMuPDF (slide extraction + OCR), OpenAI GPT-4o (classification + card generation), Pillow (image blocking), boto3 (S3), supabase-py
+
+**Tags:** topic + subtopic + source (2–3 per card). LLM content tags removed — too granular.
+
+**Comprehensiveness:** Documented in `pipelines/kurts_notes/README.md`. Known limitations: title-only slides skipped, some classification judgment calls, but image occlusion covers what text cards miss.
 
 ### Planned Pipelines
 
@@ -155,10 +165,12 @@ Next.js Frontend → API Route → Python Pipeline Service → Cards in Supabase
 | Area | Current | Future |
 |------|---------|--------|
 | Database | Supabase (free tier) | Supabase (paid) — shared across all ecosystem apps |
+| DB Access | Supabase MCP server + Management API | Same — psql blocked by IPv6 routing |
 | Hosting | Vercel (free tier) | Vercel (paid) — as traffic/build needs grow |
 | Media | AWS S3 | AWS S3 (same) |
 | Pipelines | Local Python scripts | Backend service (FastAPI on Railway/Fly.io) for ingestion dashboard |
 | CI/CD | Vercel auto-deploy from GitHub | Same |
+| AI Skills | Supabase best practices skill | Additional skills as needed |
 | Image Gen | — | AI tools (Nano Banana etc.) for gamification assets |
 
 Willing to invest in paid plans — personal tools > third-party subscriptions.

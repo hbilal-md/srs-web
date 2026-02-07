@@ -73,6 +73,77 @@ def find_slide_regions(doc: fitz.Document, page_num: int) -> List[fitz.Rect]:
     return regions
 
 
+def split_large_region(
+    page: fitz.Page,
+    region: fitz.Rect,
+    min_region_height: float = 100,
+    max_regions: int = 4,
+) -> List[fitz.Rect]:
+    """Split a large page region into logical sub-regions using content analysis.
+
+    Called when find_slide_regions() returns only 1 region (full page).
+    Uses vertical gaps between text/image blocks to find natural split points.
+    """
+    text_dict = page.get_text("dict", clip=region)
+    blocks = text_dict.get("blocks", [])
+
+    if len(blocks) <= 1:
+        return [region]
+
+    # Collect all content blocks with bounding boxes
+    content_blocks = []
+    for block in blocks:
+        bbox = fitz.Rect(block["bbox"])
+        block_type = "image" if block.get("type") == 1 else "text"
+        content_blocks.append({"bbox": bbox, "type": block_type})
+
+    content_blocks.sort(key=lambda b: b["bbox"].y0)
+
+    # Find vertical gaps between consecutive blocks
+    gaps = []
+    for i in range(len(content_blocks) - 1):
+        current_bottom = content_blocks[i]["bbox"].y1
+        next_top = content_blocks[i + 1]["bbox"].y0
+        gap_size = next_top - current_bottom
+
+        if gap_size > 5:
+            gaps.append({
+                "index": i,
+                "y": (current_bottom + next_top) / 2,
+                "size": gap_size,
+            })
+
+    if not gaps:
+        return [region]
+
+    # Filter out gaps that would cut through an image
+    image_rects = [b["bbox"] for b in content_blocks if b["type"] == "image"]
+    valid_gaps = []
+    for gap in gaps:
+        cuts_image = any(img.y0 < gap["y"] < img.y1 for img in image_rects)
+        if not cuts_image:
+            valid_gaps.append(gap)
+
+    if not valid_gaps:
+        return [region]
+
+    # Pick the largest gaps (strongest content boundaries)
+    valid_gaps.sort(key=lambda g: g["size"], reverse=True)
+    num_splits = min(len(valid_gaps), max_regions - 1)
+    chosen_gaps = sorted(valid_gaps[:num_splits], key=lambda g: g["y"])
+
+    # Build sub-regions
+    split_points = [region.y0] + [g["y"] for g in chosen_gaps] + [region.y1]
+    sub_regions = []
+    for i in range(len(split_points) - 1):
+        y_start = split_points[i]
+        y_end = split_points[i + 1]
+        if y_end - y_start >= min_region_height:
+            sub_regions.append(fitz.Rect(region.x0, y_start, region.x1, y_end))
+
+    return sub_regions if sub_regions else [region]
+
+
 # ── Text extraction ───────────────────────────────────────────
 
 
@@ -256,7 +327,42 @@ def image_to_base64(img: Image.Image) -> str:
     return base64.b64encode(buffer.read()).decode()
 
 
+# ── Constants ─────────────────────────────────────────────────
+
+# Low-value words that should never be occlusion targets
+LOW_VALUE_WORDS = {
+    "a", "an", "the", "of", "in", "on", "at", "to", "for", "with", "by",
+    "from", "into", "through", "and", "or", "but", "nor", "yet", "so",
+    "is", "are", "was", "were", "has", "have", "had", "be", "been",
+    "can", "may", "will", "it", "its", "they", "their", "this", "that",
+    "these", "those", "which", "who", "also", "often", "usually",
+    "typically", "commonly", "generally", "not", "no", "if", "as",
+}
+
+
 # ── AI classification & generation ────────────────────────────
+
+SUBTOPIC_PROMPT = """You are looking at the first page of a medical education PDF.
+
+The broad topic is: {topic}
+
+Based on what you see, determine a specific SUBTOPIC for this PDF.
+The subtopic should be:
+- More specific than the topic but still describe the whole PDF's content
+- A concise, title-cased name (2-5 words)
+- The kind of label you'd use in a textbook chapter or lecture title
+
+Examples:
+- Topic "Cytology" → Subtopic might be "Cervical Cytology", "Anal Cytology", "Urine Cytology"
+- Topic "Pathology" → Subtopic might be "Breast Carcinoma", "Thyroid Nodules", "Liver Cirrhosis"
+- Topic "Hematology" → Subtopic might be "Iron Deficiency Anemia", "Acute Leukemia"
+
+Respond in JSON:
+{{
+  "subtopic": "<specific subtopic name>"
+}}
+"""
+
 
 SLIDE_CLASSIFICATION_PROMPT = """Classify this medical education slide.
 
@@ -298,6 +404,18 @@ Text items may have formatting tags in brackets:
 - [bold] = bold text - often important terms
 - [italic] = italic text - often emphasized
 - [color:#rrggbb] = colored text - author highlighted this
+- [skip] = low-value word (article, preposition, etc.) - NEVER occlude these
+
+## SLIDE TITLE HANDLING (CRITICAL)
+
+The slide title/heading is the text at the top of the slide that names the topic
+(e.g., "Cervical Cytology", "Types of HPV", "Bethesda Classification").
+
+NEVER occlude slide title words. They provide context but hiding them tests nothing
+meaningful. Do not include any title/heading word indices in hide_indices arrays.
+
+The title tells you WHAT the slide is about. Occlude the DETAILS, not the topic name.
+You can see the slide image — use it to identify which text is the title/heading.
 
 ## PHILOSOPHY: QUALITY OVER QUANTITY
 
@@ -327,6 +445,29 @@ Create 1 card that hides all 4 related terms:
 - hide_indices: [[12], [15], [18], [22]]  (array of arrays!)
 - question: "What are the key features of superficial squamous cells?"
 - answer: "pyknotic nuclei, polygonal shape, eosinophilic cytoplasm, superficial location"
+
+## OCCLUSION WORD SELECTION (CRITICAL)
+
+NEVER occlude any of these:
+- Words tagged [skip] (articles, prepositions, conjunctions, generic verbs)
+- Words tagged as slide title/heading text
+- Words with 2 or fewer characters
+- Numbers alone (unless part of a specific measurement or criterion)
+- Generic filler: also, often, usually, typically, commonly, generally, etc.
+
+ALWAYS PREFER to occlude (in priority order):
+1. **Bold or colored words** — The author highlighted these for a reason. They are almost
+   always the highest-value targets. If a word is [bold] or [color:...], it should be
+   your FIRST choice for occlusion.
+2. **Medical/scientific terminology** — Disease names, cell types, stain names, anatomical
+   structures, molecular markers, classification terms
+3. **Specific diagnostic criteria** — Measurements, ratios, percentages, staging values
+4. **Key descriptors** — Morphological features (e.g., "pyknotic", "eosinophilic",
+   "hyperchromatic", "pleomorphic")
+5. **Classification/category names** — Bethesda categories, WHO grades, TNM stages
+
+Litmus test: Would a student who recalls this word demonstrate real understanding?
+If no, do not occlude it.
 
 ## OCCLUSION RULES
 
@@ -405,7 +546,36 @@ CRITICAL RULES:
 4. Text cards must be SELF-CONTAINED (no image shown)
 5. Tag importance (core/supporting) and quality (A/B/C) on every card
 6. NEVER create C-quality cards - if it would be C, don't include it
+7. NEVER occlude slide title/heading words or [skip] tagged words
 """
+
+
+def determine_subtopic(img: Image.Image, topic: str) -> str:
+    """Use AI to determine the subtopic of a PDF from its first page."""
+    prompt = SUBTOPIC_PROMPT.format(topic=topic)
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_to_base64(img)}",
+                            "detail": "low",
+                        },
+                    },
+                ],
+            }
+        ],
+        max_tokens=100,
+        response_format={"type": "json_object"},
+    )
+
+    result = json.loads(response.choices[0].message.content)
+    return result.get("subtopic", "Unknown")
 
 
 def classify_slide(img: Image.Image) -> dict:
@@ -437,6 +607,8 @@ def classify_slide(img: Image.Image) -> dict:
 def format_span_for_ai(span: TextSpan) -> str:
     """Format a text span with its formatting info for AI."""
     tags = []
+    if span.text.lower() in LOW_VALUE_WORDS:
+        tags.append("skip")
     if span.is_bold:
         tags.append("bold")
     if span.is_italic:
@@ -474,7 +646,23 @@ def generate_cards_for_slide(img: Image.Image, text_spans: List[TextSpan]) -> di
     """Use AI to generate cards based on slide image and text list."""
     text_list = format_text_list_by_lines(text_spans)
     word_count = len(text_spans)
-    text_list_with_count = f"TOTAL TEXT ITEMS: {word_count}\n\n{text_list}"
+
+    # Build high-value targets hint (bold/colored words)
+    preferred = []
+    for s in text_spans:
+        if s.text.lower() in LOW_VALUE_WORDS:
+            continue
+        if s.is_bold or s.color != "black":
+            preferred.append(f'{s.index} ("{s.text}")')
+
+    preferred_hint = ""
+    if preferred:
+        preferred_hint = (
+            f"\n\nHIGH-VALUE TARGETS (bold/colored — prefer these for occlusion): "
+            f"{', '.join(preferred[:20])}"
+        )
+
+    text_list_with_count = f"TOTAL TEXT ITEMS: {word_count}\n\n{text_list}{preferred_hint}"
 
     prompt = CARD_GENERATION_PROMPT.format(text_list=text_list_with_count)
 

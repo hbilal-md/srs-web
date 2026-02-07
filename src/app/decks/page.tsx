@@ -14,6 +14,9 @@ interface Deck {
   filter_quality: string[]
   sort_order: string
   totalCards: number
+  introduced: number
+  introPercent: number
+  // Legacy
   progress: number
   progressPercent: number
   completed: boolean
@@ -55,6 +58,8 @@ export default function DecksPage() {
   const [difficultyMax, setDifficultyMax] = useState<number | ''>('')
   const [sortOrder, setSortOrder] = useState('due_date')
   const [maxCards, setMaxCards] = useState<number | ''>('')
+  const [newPerSession, setNewPerSession] = useState<number | ''>(20)
+  const [reviewPerSession, setReviewPerSession] = useState<number | ''>(200)
   const [isCreating, setIsCreating] = useState(false)
 
   // Topic accordion state
@@ -132,6 +137,8 @@ export default function DecksPage() {
           filterDifficultyMax: difficultyMax || null,
           sortOrder,
           maxCards: maxCards || null,
+          newPerSession: newPerSession || 20,
+          reviewPerSession: reviewPerSession || 200,
         }),
       })
 
@@ -164,6 +171,8 @@ export default function DecksPage() {
     setDifficultyMax('')
     setSortOrder('due_date')
     setMaxCards('')
+    setNewPerSession(20)
+    setReviewPerSession(200)
     setExpandedTopics([])
     setTagSearch('')
   }
@@ -175,19 +184,6 @@ export default function DecksPage() {
       setDecks(decks.filter(d => d.deck_id !== deckId))
     } catch (err) {
       console.error('Error deleting deck:', err)
-    }
-  }
-
-  const handleResetDeck = async (deckId: string) => {
-    try {
-      await fetch(`/api/decks/${deckId}/reset`, { method: 'POST' })
-      setDecks(decks.map(d =>
-        d.deck_id === deckId
-          ? { ...d, progress: 0, progressPercent: 0, completed: false }
-          : d
-      ))
-    } catch (err) {
-      console.error('Error resetting deck:', err)
     }
   }
 
@@ -313,8 +309,7 @@ export default function DecksPage() {
                 <div>
                   <h3 className="font-medium text-lg">{deck.name}</h3>
                   <div className="text-sm text-gray-400">
-                    {deck.progress} / {deck.totalCards} cards
-                    {deck.completed && ' \u2022 Completed \u2713'}
+                    {deck.introduced}/{deck.totalCards} introduced
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -322,14 +317,8 @@ export default function DecksPage() {
                     href={`/decks/${deck.deck_id}`}
                     className="px-3 py-1 bg-accent-green hover:opacity-90 rounded text-sm text-gray-900 font-medium"
                   >
-                    {deck.completed ? 'Review' : 'Continue'}
+                    Continue
                   </Link>
-                  <button
-                    onClick={() => handleResetDeck(deck.deck_id)}
-                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
-                  >
-                    Reset
-                  </button>
                   <button
                     onClick={() => handleDeleteDeck(deck.deck_id)}
                     className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm"
@@ -342,7 +331,7 @@ export default function DecksPage() {
               <div className="progress-bar">
                 <div
                   className="progress-fill"
-                  style={{ width: `${deck.progressPercent}%` }}
+                  style={{ width: `${deck.introPercent || 0}%` }}
                 />
               </div>
 
@@ -671,9 +660,41 @@ export default function DecksPage() {
                 </select>
               </div>
 
-              {/* ── Max Cards ── */}
+              {/* ── Per-Session Limits ── */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Max Cards (optional)</label>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Cards Per Session
+                  <span className="text-xs text-gray-500 ml-1">(daily limits)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">New</label>
+                    <input
+                      type="number"
+                      value={newPerSession}
+                      onChange={e => setNewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                      placeholder="20"
+                      min={1}
+                      className="w-full px-3 py-2 bg-dark-bg rounded-lg border border-gray-600 focus:border-accent-green focus:outline-none text-sm"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">Review</label>
+                    <input
+                      type="number"
+                      value={reviewPerSession}
+                      onChange={e => setReviewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                      placeholder="200"
+                      min={1}
+                      className="w-full px-3 py-2 bg-dark-bg rounded-lg border border-gray-600 focus:border-accent-green focus:outline-none text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Max Cards in Pool ── */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Max Cards in Pool (optional)</label>
                 <input
                   type="number"
                   value={maxCards}

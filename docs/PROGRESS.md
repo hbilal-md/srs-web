@@ -1,24 +1,60 @@
 # SRS Web — Progress Tracker
 
-Last updated: **2026-02-06** | See also: [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md)
+Last updated: **2026-02-07** | See also: [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md)
 
 ---
 
-## Current Sprint: Card Ingestion Pipeline Improvements
+## Current Sprint: Testing & Polish
 
-Focus: Fix and extend the Kurt's Notes pipeline, then introduce new pipeline frameworks.
+Focus: End-to-end testing of the new filtered deck system, then new pipeline frameworks.
 
 ### Todo
 
-- [ ] Kurt's Notes pipeline fixes (user has specific issues to address)
-- [ ] Test pipeline end-to-end with new `pipelines/` structure
+- [ ] Test filtered deck flow end-to-end (create deck → review → session limits → all caught up)
+- [ ] Delete old "Cyto effusion" deck (created before overhaul, lacks session data)
 - [ ] Introduce additional pipeline framework(s) (textbook chapters, lecture notes, etc.)
-- [ ] Deck review page (`/decks/[id]`) — has not been redesigned yet, still uses old layout
 
 ### Remaining UI Polish (Lower Priority)
 
 - [ ] Occlusion image stacking — verify crossfade works on slow connections
 - [ ] Quick 10 with fewer than 10 due cards — verify graceful handling
+
+---
+
+## Completed: Filtered Deck Overhaul + Pipeline Improvements + DB Access (#2)
+
+Branch: `issue-1-ui-improvements` | **2026-02-07**
+
+### Filtered Deck Overhaul
+- [x] Replace static position-based playlist with dynamic session queue
+- [x] Priority queue: learning due → review due → new cards
+- [x] Per-session limits (`new_per_session`, `review_per_session`) configurable at deck creation
+- [x] Daily counter auto-reset via `last_session_date`
+- [x] `cards_introduced` tracking (introduction → review lifecycle)
+- [x] Session stats bar (New: x/y | Due: x/y | Learning: x)
+- [x] "All caught up" screen with next due time instead of "Deck Complete"
+- [x] Card type badges (new/review/learning) on review page
+- [x] Migration 005 applied (session tracking columns)
+
+### FSRS Interval Tuning
+- [x] AGAIN: 1 minute (stays in learning)
+- [x] HARD: 10 minutes (stays in learning)
+- [x] GOOD: FSRS-calculated (~3 days for new, graduates to review)
+- [x] EASY: FSRS-calculated (~15 days for new, graduates to review)
+
+### Pipeline Tag Simplification
+- [x] Dropped LLM-generated content tags (too granular, inconsistent)
+- [x] Tags now: topic + subtopic + source (2–3 per card)
+- [x] Removed TAG GENERATION section from LLM prompt
+- [x] Pipeline comprehensiveness documented in `pipelines/kurts_notes/README.md`
+- [x] Obsidian note generation removed (no longer needed)
+
+### Database Access
+- [x] Supabase MCP server configured (`.mcp.json`)
+- [x] Supabase Management API confirmed working for DDL/queries
+- [x] Migration 005 run via Management API
+- [x] Supabase best practices skill installed
+- [x] `.mcp.json` added to `.gitignore`
 
 ---
 
@@ -99,12 +135,16 @@ Branch: `issue-1-ui-improvements` | PRs: #20, #21 | **Merged 2026-02-06**
 
 ## What to Test After Resuming
 
-1. **Pipeline** — Does `python -m kurts_notes.run /path/to/folder` work end-to-end with the new structure?
-2. **Occlusion cards** — Images centered on all devices? Crossfade smooth?
-3. **All card types** — Q/A, cloze, occlusion all centered (margin: 0 auto)?
-4. **Rating buttons** — Colored borders visible? Fill on press? Compact height?
-5. **Deck management** — Three-dot menu works? Reset/Delete? Back links go home?
-6. **Create deck** — `/decks/new` form works, redirects to home on success?
+1. **Filtered deck creation** — `/decks/new` with custom new/review per-session limits
+2. **Session queue** — Learning cards appear first, then review, then new
+3. **Per-session limits** — New cards stop at limit, review cards stop at limit
+4. **Daily reset** — Counters reset to 0 on new day
+5. **All caught up** — Shows next due time when no cards available
+6. **Card types** — New/review/learning badges display correctly
+7. **FSRS intervals** — AGAIN=1min, HARD=10min, GOOD=days, EASY=days
+8. **Undo** — Reverses session counters and cards_introduced
+9. **Pipeline** — `python -m kurts_notes.run /path/to/folder` with simplified tags
+10. **Supabase MCP** — Restart Claude Code and verify MCP server connects
 
 ---
 
@@ -137,3 +177,8 @@ Full audit completed 2026-02-05. Updated after PR #21 merge.
 | 2026-02-06 | Rating buttons → transparent + colored border | Fill on press for feedback, single-row layout (label + interval), half height |
 | 2026-02-06 | Deck management → home page three-dot menu | Reset/Delete via overflow menu (⋮). `/decks` page deprecated, `/decks/new` for creation |
 | 2026-02-06 | Pipeline reorganization | `srs_card_gen/` → `pipelines/` with shared utilities, Kurt's Notes as first framework |
+| 2026-02-07 | Dynamic session queue for filtered decks | Replaced static position-based playlist. Priority: learning → review → new. Per-session limits |
+| 2026-02-07 | FSRS learning intervals tuned | AGAIN=1min, HARD=10min, GOOD/EASY=FSRS-calculated (graduate to review) |
+| 2026-02-07 | Tag simplification | Dropped LLM content tags. 2-3 tags per card: topic + subtopic + source |
+| 2026-02-07 | Supabase MCP for DB access | `.mcp.json` at project root. Bypasses IPv6 psql issue. Used Management API for migration |
+| 2026-02-07 | Obsidian notes removed | No longer generating reference notes — reviewing via image occlusion instead |
