@@ -69,7 +69,7 @@ export async function GET() {
       for (const id of cardPool) {
         const card = cardStateMap.get(id)
         if (!card) continue
-        if ((card.state === 'learning' || card.state === 'relearning') && card.due_date && card.due_date <= now) {
+        if (card.state === 'learning' || card.state === 'relearning') {
           learningNow++
         } else if (card.state === 'review' && introducedSet.has(id) && card.due_date && card.due_date <= now) {
           dueRemaining++
@@ -124,8 +124,8 @@ export async function POST(request: Request) {
       filterDifficultyMax,
       sortOrder = 'due_date',
       maxCards,
-      newPerSession = 20,
-      reviewPerSession = 200,
+      newPerSession = 200,
+      reviewPerSession = 999,
     } = body
 
     if (!name) {

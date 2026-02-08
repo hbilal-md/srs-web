@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -48,12 +48,15 @@ export default function NewDeckPage() {
   const [difficultyMax, setDifficultyMax] = useState<number | ''>('')
   const [sortOrder, setSortOrder] = useState('due_date')
   const [maxCards, setMaxCards] = useState<number | ''>('')
-  const [newPerSession, setNewPerSession] = useState<number | ''>(20)
-  const [reviewPerSession, setReviewPerSession] = useState<number | ''>(200)
+  const [newPerSession, setNewPerSession] = useState<number | ''>(200)
+  const [reviewPerSession, setReviewPerSession] = useState<number | ''>(999)
   const [isCreating, setIsCreating] = useState(false)
 
   // Topic accordion state
   const [expandedTopics, setExpandedTopics] = useState<string[]>([])
+
+  // Advanced filters toggle
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Tag search state
   const [tagSearch, setTagSearch] = useState('')
@@ -95,6 +98,39 @@ export default function NewDeckPage() {
     fetchFilterOptions()
   }, [])
 
+  // Live card count preview from subtopicStats
+  const cardPreview = useMemo(() => {
+    const stats = filterOptions.subtopicStats
+    const allSubtopics = Object.values(filterOptions.topicTree).flat()
+
+    // If subtopics are selected, use those; otherwise sum all
+    const relevantSubtopics = selectedSubtopics.length > 0
+      ? selectedSubtopics
+      : allSubtopics
+
+    const agg = { total: 0, new: 0, due: 0, learning: 0 }
+    for (const st of relevantSubtopics) {
+      const s = stats[st]
+      if (s) {
+        agg.total += s.total
+        agg.new += s.new
+        agg.due += s.due
+        agg.learning += s.learning
+      }
+    }
+
+    const hasAdvancedFilters = selectedTags.length > 0 ||
+      selectedStates.length > 0 ||
+      selectedImportance.length > 0 ||
+      selectedQuality.length > 0 ||
+      difficultyMin !== '' ||
+      difficultyMax !== ''
+
+    return { ...agg, hasAdvancedFilters }
+  }, [filterOptions.subtopicStats, filterOptions.topicTree, selectedSubtopics,
+      selectedTags, selectedStates, selectedImportance, selectedQuality,
+      difficultyMin, difficultyMax])
+
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newDeckName.trim()) return
@@ -116,15 +152,15 @@ export default function NewDeckPage() {
           filterDifficultyMax: difficultyMax || null,
           sortOrder,
           maxCards: maxCards || null,
-          newPerSession: newPerSession || 20,
-          reviewPerSession: reviewPerSession || 200,
+          newPerSession: newPerSession || 200,
+          reviewPerSession: reviewPerSession || 999,
         }),
       })
 
       const data = await res.json()
 
       if (res.ok && data.deck) {
-        router.push('/')
+        router.push(`/decks/${data.deck.deck_id}`)
       } else {
         alert(data.error || 'Failed to create deck')
       }
@@ -340,145 +376,52 @@ export default function NewDeckPage() {
           </div>
         )}
 
-        {/* Tags */}
-        {filterOptions.tags.length > 0 && (
-          <div ref={tagContainerRef}>
-            <label className="block text-sm text-gray-400 mb-2">Tags</label>
-
-            {selectedTags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedTags.map(tag => (
-                  <span key={tag} className="tag-chip flex items-center gap-1">
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}
-                      className="hover:text-red-400"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
+        {/* Live card count preview */}
+        {cardPreview.total > 0 && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-dark-accent/40 border border-gray-700/50">
+            <span className="text-lg font-semibold text-white">{cardPreview.total}</span>
+            <span className="text-sm text-gray-400">cards</span>
+            <span className="text-gray-600">·</span>
+            <span className="text-sm text-blue-400">{cardPreview.new} new</span>
+            <span className="text-sm text-green-400">{cardPreview.due} due</span>
+            {cardPreview.learning > 0 && (
+              <span className="text-sm text-orange-400">{cardPreview.learning} learning</span>
             )}
-
-            <div className="relative">
-              <input
-                ref={tagInputRef}
-                type="text"
-                value={tagSearch}
-                onChange={e => {
-                  setTagSearch(e.target.value)
-                  setTagDropdownOpen(true)
-                }}
-                onFocus={() => setTagDropdownOpen(true)}
-                placeholder="Search tags..."
-                className="create-deck-input"
-              />
-
-              {tagDropdownOpen && filteredTags.length > 0 && (
-                <div className="create-deck-dropdown">
-                  {filteredTags.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTags(prev => [...prev, tag])
-                        setTagSearch('')
-                        tagInputRef.current?.focus()
-                      }}
-                      className="create-deck-dropdown-item"
-                    >
-                      #{tag}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {cardPreview.hasAdvancedFilters && (
+              <span className="text-xs text-gray-500 ml-auto">before filters</span>
+            )}
           </div>
         )}
 
-        {/* State */}
-        <div>
-          <label className="block text-sm text-gray-400 mb-2">State</label>
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.states.map(state => (
-              <button
-                key={state}
-                type="button"
-                onClick={() => toggleSelection(state, selectedStates, setSelectedStates)}
-                className={`create-deck-toggle ${selectedStates.includes(state) ? 'create-deck-toggle--active' : ''}`}
-              >
-                {state}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Importance */}
-        <div>
-          <label className="block text-sm text-gray-400 mb-2">Importance</label>
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.importance.map(imp => (
-              <button
-                key={imp}
-                type="button"
-                onClick={() => toggleSelection(imp, selectedImportance, setSelectedImportance)}
-                className={`create-deck-toggle ${selectedImportance.includes(imp) ? 'create-deck-toggle--active' : ''}`}
-              >
-                {imp === 'core' ? 'Core' : 'Supporting'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Quality */}
-        {filterOptions.quality.length > 0 && (
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Quality</label>
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.quality.map(q => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => toggleSelection(q, selectedQuality, setSelectedQuality)}
-                  className={`create-deck-toggle ${selectedQuality.includes(q) ? 'create-deck-toggle--active' : ''}`}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Difficulty Range */}
+        {/* Per-Session Limits */}
         <div>
           <label className="block text-sm text-gray-400 mb-2">
-            Difficulty Range
-            <span className="text-xs text-gray-600 ml-1">(1-10, reviewed cards only)</span>
+            Cards Per Session
+            <span className="text-xs text-gray-600 ml-1">(daily limits)</span>
           </label>
           <div className="flex items-center gap-3">
-            <input
-              type="number"
-              value={difficultyMin}
-              onChange={e => setDifficultyMin(e.target.value ? parseFloat(e.target.value) : '')}
-              placeholder="Min"
-              min={1}
-              max={10}
-              step={0.5}
-              className="create-deck-input w-24"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="number"
-              value={difficultyMax}
-              onChange={e => setDifficultyMax(e.target.value ? parseFloat(e.target.value) : '')}
-              placeholder="Max"
-              min={1}
-              max={10}
-              step={0.5}
-              className="create-deck-input w-24"
-            />
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">New</label>
+              <input
+                type="number"
+                value={newPerSession}
+                onChange={e => setNewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="200"
+                min={1}
+                className="create-deck-input"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Review</label>
+              <input
+                type="number"
+                value={reviewPerSession}
+                onChange={e => setReviewPerSession(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="999"
+                min={1}
+                className="create-deck-input"
+              />
+            </div>
           </div>
         </div>
 
@@ -497,50 +440,179 @@ export default function NewDeckPage() {
           </select>
         </div>
 
-        {/* Per-Session Limits */}
-        <div>
-          <label className="block text-sm text-gray-400 mb-2">
-            Cards Per Session
-            <span className="text-xs text-gray-600 ml-1">(daily limits)</span>
-          </label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 mb-1">New</label>
-              <input
-                type="number"
-                value={newPerSession}
-                onChange={e => setNewPerSession(e.target.value ? parseInt(e.target.value) : '')}
-                placeholder="20"
-                min={1}
-                className="create-deck-input"
-              />
+        {/* Advanced Filters Toggle */}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-sm text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1.5"
+        >
+          <span className="text-xs">{showAdvanced ? '▼' : '▶'}</span>
+          Advanced Filters
+          {(selectedTags.length > 0 || selectedStates.length > 0 ||
+            selectedImportance.length > 0 || selectedQuality.length > 0 ||
+            difficultyMin !== '' || difficultyMax !== '' || maxCards !== '') && (
+            <span className="text-xs text-accent-green ml-1">(active)</span>
+          )}
+        </button>
+
+        {showAdvanced && (
+          <div className="space-y-5 pl-3 border-l-2 border-gray-700/50">
+            {/* Tags */}
+            {filterOptions.tags.length > 0 && (
+              <div ref={tagContainerRef}>
+                <label className="block text-sm text-gray-400 mb-2">Tags</label>
+
+                {selectedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {selectedTags.map(tag => (
+                      <span key={tag} className="tag-chip flex items-center gap-1">
+                        #{tag}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}
+                          className="hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="relative">
+                  <input
+                    ref={tagInputRef}
+                    type="text"
+                    value={tagSearch}
+                    onChange={e => {
+                      setTagSearch(e.target.value)
+                      setTagDropdownOpen(true)
+                    }}
+                    onFocus={() => setTagDropdownOpen(true)}
+                    placeholder="Search tags..."
+                    className="create-deck-input"
+                  />
+
+                  {tagDropdownOpen && filteredTags.length > 0 && (
+                    <div className="create-deck-dropdown">
+                      {filteredTags.map(tag => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags(prev => [...prev, tag])
+                            setTagSearch('')
+                            tagInputRef.current?.focus()
+                          }}
+                          className="create-deck-dropdown-item"
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* State */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">State</label>
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.states.map(state => (
+                  <button
+                    key={state}
+                    type="button"
+                    onClick={() => toggleSelection(state, selectedStates, setSelectedStates)}
+                    className={`create-deck-toggle ${selectedStates.includes(state) ? 'create-deck-toggle--active' : ''}`}
+                  >
+                    {state}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 mb-1">Review</label>
+
+            {/* Importance */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Importance</label>
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.importance.map(imp => (
+                  <button
+                    key={imp}
+                    type="button"
+                    onClick={() => toggleSelection(imp, selectedImportance, setSelectedImportance)}
+                    className={`create-deck-toggle ${selectedImportance.includes(imp) ? 'create-deck-toggle--active' : ''}`}
+                  >
+                    {imp === 'core' ? 'Core' : 'Supporting'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quality */}
+            {filterOptions.quality.length > 0 && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Quality</label>
+                <div className="flex flex-wrap gap-2">
+                  {filterOptions.quality.map(q => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => toggleSelection(q, selectedQuality, setSelectedQuality)}
+                      className={`create-deck-toggle ${selectedQuality.includes(q) ? 'create-deck-toggle--active' : ''}`}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Difficulty Range */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Difficulty Range
+                <span className="text-xs text-gray-600 ml-1">(1-10, reviewed cards only)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={difficultyMin}
+                  onChange={e => setDifficultyMin(e.target.value ? parseFloat(e.target.value) : '')}
+                  placeholder="Min"
+                  min={1}
+                  max={10}
+                  step={0.5}
+                  className="create-deck-input w-24"
+                />
+                <span className="text-gray-500">to</span>
+                <input
+                  type="number"
+                  value={difficultyMax}
+                  onChange={e => setDifficultyMax(e.target.value ? parseFloat(e.target.value) : '')}
+                  placeholder="Max"
+                  min={1}
+                  max={10}
+                  step={0.5}
+                  className="create-deck-input w-24"
+                />
+              </div>
+            </div>
+
+            {/* Max Cards */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Max Cards in Pool</label>
               <input
                 type="number"
-                value={reviewPerSession}
-                onChange={e => setReviewPerSession(e.target.value ? parseInt(e.target.value) : '')}
-                placeholder="200"
+                value={maxCards}
+                onChange={e => setMaxCards(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="All matching cards"
                 min={1}
                 className="create-deck-input"
               />
             </div>
           </div>
-        </div>
-
-        {/* Max Cards */}
-        <div>
-          <label className="block text-sm text-gray-400 mb-2">Max Cards in Pool (optional)</label>
-          <input
-            type="number"
-            value={maxCards}
-            onChange={e => setMaxCards(e.target.value ? parseInt(e.target.value) : '')}
-            placeholder="All matching cards"
-            min={1}
-            className="create-deck-input"
-          />
-        </div>
+        )}
 
         {/* Buttons */}
         <div className="flex gap-3 pt-2 pb-8">
