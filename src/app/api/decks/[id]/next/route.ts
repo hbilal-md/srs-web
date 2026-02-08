@@ -270,7 +270,7 @@ async function getDeckCounts(
   let newAvailable = 0
 
   for (const card of cards || []) {
-    if ((card.state === 'learning' || card.state === 'relearning') && card.due_date && card.due_date <= now) {
+    if (card.state === 'learning' || card.state === 'relearning') {
       learningNow++
     } else if (card.state === 'review' && cardsIntroducedSet.has(card.card_id) && card.due_date && card.due_date <= now) {
       dueRemaining++
